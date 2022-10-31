@@ -6,9 +6,11 @@ module fen_decode(
   input logic in_sop,
   input logic in_eop,
 
-  output reg        o_valid = 0,
-  output reg [3:0]  o_pdata,
-  output reg        o_turn,
+  output reg        o_pos_valid = 0,
+  output reg [3:0]  o_pos_data = 0,
+  output reg        o_pos_sop = 0,
+  output reg        o_pos_eop = 0,
+  output reg        o_wtp = 0,
   output reg [3:0]  o_castle,
   output reg [2:0]  o_ep,
   output reg [15:0] o_hmcount,
@@ -18,6 +20,83 @@ module fen_decode(
   timeunit 1s;
   timeprecision 1ns;
 
+
+  // 1st timestep - state machine
+  // delay data and valid signal
+
+  localparam [4:0]
+      fem_idle       = 4'd0,
+      fem_pieces     = 4'd1,
+      fem_pieces_sp  = 4'd2,
+      fem_turn       = 4'd3,
+      fem_turn_sp    = 4'd4,
+      fem_castle     = 4'd5,
+      fem_castle_sp  = 4'd6,
+      fem_ep         = 4'd7,
+      fem_ep_sp      = 4'd8,
+      fem_hmclock    = 4'd9,
+      fem_hmclock_sp = 4'd10,
+      fem_fmclock    = 4'd11,
+      fem_output     = 4'd12;
+
+  wire tok_space = in_data == " ";
+  reg [3:0] state = fem_idle;
+  reg [7:0] state_data = 0;
+  reg       state_valid = 0;
+  reg       was_valid_eop = 0;
+  wire pbuffer_empty_full = pbuffer_wraddr == pbuffer_rdaddr;
+
+  always_ff @(posedge clk) begin
+    // dleay to match decoded state
+    state_data <= in_data;
+    state_valid <= in_valid;
+    was_valid_eop <= in_valid && in_eop;
+
+    state <= state;
+    if (in_valid & in_sop) begin
+      state <= fem_pieces;
+    end else if (state == fem_output) begin
+        if (pbuffer_empty_full) state <= fem_idle;
+    end else if (was_valid_eop) begin
+        state <= fem_output;
+    end else if (in_valid) begin
+        case (state)
+          fem_pieces: begin
+            if (tok_space) state <= fem_pieces_sp;
+          end
+          fem_pieces_sp: begin
+            state <= fem_turn;
+          end
+          fem_turn: begin
+            if (tok_space) state <= fem_turn_sp;
+          end
+          fem_turn_sp: begin
+            state <= fem_castle;
+          end
+          fem_castle: begin
+            if (tok_space) state <= fem_castle_sp;
+          end
+          fem_castle_sp: begin
+            state <= fem_ep;
+          end
+          fem_ep: begin
+            if (tok_space) state <= fem_ep_sp;
+          end
+          fem_ep_sp: begin
+            state <= fem_hmclock;
+          end
+          fem_hmclock: begin
+            if (tok_space) state <= fem_hmclock_sp;
+          end
+          fem_hmclock_sp: begin
+            state <= fem_fmclock;
+          end
+          fem_fmclock: begin
+          end
+        endcase
+    end
+  end
+
   wire [6*8-1:0] white_pieces = "PRNBQK";
   wire [6*8-1:0] black_pieces = "prnbqk";
   wire [8*8-1:0] skips = "12345678";
@@ -25,7 +104,6 @@ module fen_decode(
   wire [9*8-1:0] ep_flags = "abcdefg-";
 
   wire tok_nextrank = in_data == "/";
-  wire tok_space = in_data == " ";
   wire [5:0] tok_whitep;
   wire [5:0] tok_blackp;
   wire [5:0] tok_piecet;
@@ -58,49 +136,7 @@ module fen_decode(
   assign tok_piece = |tok_piecet;
   assign tok_skips = |tok_skip;
 
-  localparam [3:0]
-      fem_idle = 3'd0,
-      fem_pieces = 3'd1,
-      fem_turn = 3'd2,
-      fem_castle = 3'd3,
-      fem_ep = 3'd4,
-      fem_hmclock = 3'd5,
-      fem_fmclock = 3'd6,
-      fem_output = 3'd7;
-
-  reg [3:0] state = fem_idle;
   reg [4:0] pbuffer [64-1:0];
-
-  always_ff @(posedge clk) begin
-    state <= state;
-    if (in_valid & in_sop) begin
-      state <= fem_pieces;
-    end else if (state == fem_output) begin
-        if (pbuffer_wraddr == pbuffer_rdaddr) state <= fem_idle;
-    end else if (in_valid) begin
-        case (state)
-          fem_pieces: begin
-            if (tok_space) state <= fem_turn;
-          end
-          fem_turn: begin
-            if (tok_space) state <= fem_castle;
-          end
-          fem_castle: begin
-            if (tok_space) state <= fem_ep;
-          end
-          fem_ep: begin
-            if (tok_space) state <= fem_hmclock;
-          end
-          fem_hmclock: begin
-            if (tok_space) state <= fem_fmclock;
-          end
-          fem_fmclock: begin
-            if (in_eop) state <= fem_output;
-          end
-        endcase
-    end
-  end
-
   // encode input tokens to our output binary values
   wire [2:0] bin_piece;
   onehot_to_bin #(.ONEHOT_WIDTH(6) ) oh2b_piece (.onehot(tok_piecet), .bin(bin_piece));
@@ -121,7 +157,7 @@ module fen_decode(
       end
 
       if (pbuffer_wr) begin
-         pbuffer[pbuffer_wraddr] <= pbuffer_wraddr;
+         pbuffer[pbuffer_wraddr] <= pbuffer_writedata;
       end
   end
 
@@ -129,30 +165,48 @@ module fen_decode(
   // write output squares by draining from pbuffer[pbuffer_rdaddr]
   // if we have a skip of n, we stall n cycles before incrementing rdaddr
   always_ff @(posedge clk) begin
-
       if (state == fem_output) begin
         pbuffer_rdaddr <= pbuffer_rdaddr + 1;
-        o_valid <= 1;
-
+        o_pos_valid <= 1;
+        o_pos_data <= pbuffer[pbuffer_rdaddr];
+        o_pos_sop <= pbuffer_rdaddr == 0;
+        o_pos_eop <= (pbuffer_rdaddr + 1) == pbuffer_wraddr;
       end else begin
         pbuffer_rdaddr <= 0;
-        o_valid <= 0;
+        o_pos_valid <= 0;
       end
 
   end
 
-  // handle the move and halfmove counters
+  // handle white to play (wtp)
+  always_ff @(posedge clk) begin
+    if (state == fem_turn && state_valid) begin
+      o_wtp <= (state_data == "w");
+    end
+  end
+
+  // handle casteling rights
+  always_ff @(posedge clk) begin
+    if (state == fem_pieces) begin
+      o_castle[3:0] <= 4'b0;
+    end else if (state == fem_castle && state_valid) begin
+      o_castle[0] <= o_castle[0] | state_data == "K";
+      o_castle[1] <= o_castle[1] | state_data == "Q";
+      o_castle[2] <= o_castle[2] | state_data == "k";
+      o_castle[3] <= o_castle[3] | state_data == "q";
+    end
+  end
+
+  // handle move and halfmove counters
   wire [15:0] bin_count;
   ascii_int_to_bin moves_asciibin (.clk(clk), .data(in_data[3:0]), .valid(in_valid), .reset(tok_space), .bin(bin_count));
   reg was_fmclock = 0; // comp for delay in moves_asciibin
   reg was_hmclock = 0;
   always_ff @(posedge clk) begin
-    was_fmclock <= (state == fem_fmclock);
-    was_hmclock <= (state == fem_hmclock);
-    if (was_hmclock) begin
+    if (state == fem_hmclock) begin
       o_hmcount <= bin_count;
     end
-    if (was_fmclock) begin
+    if (state == fem_fmclock) begin
       o_fmcount <= bin_count;
     end
   end
