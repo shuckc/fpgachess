@@ -7,6 +7,13 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
+COMPILE_ARGS+= -Wall -Wimplicit
+RUN_ARGS += -Wall -Wimplicit
+
+# these pass to vvp
+# EXTRA_ARGS+= -Wimplicit
+# SIM_ARGS += -Wall -Wimplicit
+
 VERILOG_SOURCES += $(PWD)/hw/fen_decode.sv $(PWD)/hw/test_fen_decode.sv $(PWD)/hw/onehot_to_bin.sv
 VERILOG_SOURCES += $(PWD)/hw/ascii_int_to_bin.sv
 

@@ -56,7 +56,7 @@ module fen_decode(
     if (in_valid & in_sop) begin
       state <= fem_pieces;
     end else if (state == fem_output) begin
-        if (pbuffer_empty_full) state <= fem_idle;
+        if (o_pos_eop) state <= fem_idle;
     end else if (was_valid_eop) begin
         state <= fem_output;
     end else if (in_valid) begin
@@ -97,9 +97,9 @@ module fen_decode(
     end
   end
 
-  wire [6*8-1:0] white_pieces = "PRNBQK";
-  wire [6*8-1:0] black_pieces = "prnbqk";
-  wire [8*8-1:0] skips = "12345678";
+  wire [6*8-1:0] white_pieces = "PNBRQK";
+  wire [6*8-1:0] black_pieces = "pnbrqk";
+  wire [8*8-1:0] skips = "87654321";
   wire [5*8-1:0] castle_flags = "KQkq-";
   wire [9*8-1:0] ep_flags = "abcdefg-";
 
@@ -109,12 +109,9 @@ module fen_decode(
   wire [5:0] tok_piecet;
   wire [7:0] tok_skip;
   wire       tok_white;
-  wire       tok_black;
   wire       tok_piece;
-  wire [5:0] tok_castle;
   wire [7:0] tok_ep;
   wire       tok_skips;
-  wire [3:0] tok_a2d_num = in_data[3:0]; // in_data[7:0] - "0";
 
   genvar i;
   generate
@@ -127,24 +124,35 @@ module fen_decode(
       assign tok_skip[i] = in_data == skips[i*8+:8];
       assign tok_ep[i] = in_data == ep_flags[i*8+:8];
     end
-    for (i=0;i<5;i++) begin
-      assign tok_castle[i] = in_data == castle_flags[i*8+:8];
-    end
   endgenerate
   assign tok_white = |tok_whitep;
-  assign tok_black = |tok_blackp;
   assign tok_piece = |tok_piecet;
   assign tok_skips = |tok_skip;
 
-  reg [4:0] pbuffer [64-1:0];
+  reg [6:0] pbuffer [64-1:0];
   // encode input tokens to our output binary values
   wire [2:0] bin_piece;
-  onehot_to_bin #(.ONEHOT_WIDTH(6) ) oh2b_piece (.onehot(tok_piecet), .bin(bin_piece));
-  wire [3:0] bin_skip = tok_a2d_num;
+  onehot_to_bin #(.ONEHOT_WIDTH(7) ) oh2b_piece (.onehot({tok_piecet, 1'b0}), .bin(bin_piece));
+  wire [2:0] bin_skip;
+  onehot_to_bin #(.ONEHOT_WIDTH(8) ) oh2b_skip (.onehot(tok_skip), .bin(bin_skip));
 
-  // write incoming pieces/skips into buffer. We leave out '/' tokens so the output
-  // side can stream out pieces consecutively
-  wire [4:0] pbuffer_writedata = {tok_piece, tok_white, bin_piece} | {1'b0, tok_skip};
+  // Write incoming pieces/skips into buffer. Leave out '/' tokens so the output
+  // side can stream out pieces consecutively. Only empty pieces have a non-zero
+  // repeat. Piece order follows unicode spec.
+  //   player     piece         repeat
+  //   (1 bit)    (3 bits)      (3 bits)
+  //    0 black   000  none     000   0
+  //    1 white   001  king     111   7
+  //              010  queen
+  //              011  rook
+  //              100  bishop
+  //              101  knight
+  //              110  pawn
+  //              111  forbidden
+  // e.g. FEN '8' encodes as 0/000/111 (black, none, 7 repeats)
+  //          '1' encodes as 0/000/000 (black, none, 0 repeats)
+  //          'Q' encodes as 1/010/000 (white, queen, 0 repeats)
+  wire [6:0] pbuffer_writedata = {tok_white, bin_piece, bin_skip};
   wire       pbuffer_wr = (tok_piece | tok_skips) & in_valid & ((state == fem_pieces) | in_sop);
   reg  [4:0] pbuffer_wraddr = 0;
   reg  [4:0] pbuffer_rdaddr = 0;
@@ -164,16 +172,28 @@ module fen_decode(
 
   // write output squares by draining from pbuffer[pbuffer_rdaddr]
   // if we have a skip of n, we stall n cycles before incrementing rdaddr
+  wire [2:0] rd_bin_skip;
+  wire [2:0] rd_bin_piece;
+  wire       rd_bin_wtp;
+  reg [2:0]  rd_skip_count = 0;
+  assign {rd_bin_wtp, rd_bin_piece, rd_bin_skip} = pbuffer[pbuffer_rdaddr];
+
+  wire last_pubffer_cycle = (pbuffer_rdaddr + 1) == pbuffer_wraddr;
+  wire last_skip_cycle = rd_bin_skip == rd_skip_count;
   always_ff @(posedge clk) begin
-      if (state == fem_output) begin
-        pbuffer_rdaddr <= pbuffer_rdaddr + 1;
+      if (state == fem_output && !o_pos_eop) begin
+        pbuffer_rdaddr <= pbuffer_rdaddr + (last_skip_cycle ? 1 : 0);
+        rd_skip_count <= !last_skip_cycle ? rd_skip_count + 1 : 0;
         o_pos_valid <= 1;
-        o_pos_data <= pbuffer[pbuffer_rdaddr];
-        o_pos_sop <= pbuffer_rdaddr == 0;
-        o_pos_eop <= (pbuffer_rdaddr + 1) == pbuffer_wraddr;
+        o_pos_data <= {rd_bin_wtp, rd_bin_piece};
+        o_pos_sop <= pbuffer_rdaddr == 0 && (rd_skip_count == 0);
+        o_pos_eop <= last_pubffer_cycle && last_skip_cycle;
       end else begin
         pbuffer_rdaddr <= 0;
         o_pos_valid <= 0;
+        o_pos_eop <= 0;
+        o_pos_sop <= 0;
+        rd_skip_count <= 0;
       end
 
   end
@@ -194,6 +214,19 @@ module fen_decode(
       o_castle[1] <= o_castle[1] | state_data == "Q";
       o_castle[2] <= o_castle[2] | state_data == "k";
       o_castle[3] <= o_castle[3] | state_data == "q";
+    end
+  end
+
+  // handle ep
+  always_ff @(posedge clk) begin
+    if (state == fem_pieces) begin
+      o_ep[2:0] <= 3'b0;
+    end else if (state == fem_ep && state_valid) begin
+      if (state_data == "-") begin
+        o_ep[2:0] <= 3'b0;
+      end else begin
+        o_ep <= state_data[2:0];
+      end
     end
   end
 

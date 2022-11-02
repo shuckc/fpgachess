@@ -7,10 +7,3 @@
 6 k
 7 ?
 8 .
-9 P
-A R
-B N
-C B
-D Q
-E K
-F ?
