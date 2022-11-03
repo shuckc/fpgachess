@@ -13,6 +13,7 @@ COPY Makefile /app/
 COPY tests /app/tests
 COPY hw /app/hw/
 RUN make -C hw lint
+RUN black --check --diff /app/tests
 RUN make
 
 
