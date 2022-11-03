@@ -1,4 +1,3 @@
-`timescale 1ns / 1ps
 
 module onehot_to_bin #(
         parameter ONEHOT_WIDTH = 16

@@ -17,7 +17,7 @@ RUN_ARGS += -Wall -Wimplicit
 VERILOG_SOURCES += $(PWD)/hw/fen_decode.sv $(PWD)/hw/test_fen_decode.sv $(PWD)/hw/onehot_to_bin.sv
 VERILOG_SOURCES += $(PWD)/hw/ascii_int_to_bin.sv
 
-TOPLEVEL = test_top
+TOPLEVEL = test_fen_decode
 
 # MODULE is the basename of the Python test file
 MODULE = tests.test_fen_decode

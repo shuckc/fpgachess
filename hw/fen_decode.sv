@@ -17,14 +17,10 @@ module fen_decode(
   output reg [15:0] o_fmcount
   );
 
-  timeunit 1s;
-  timeprecision 1ns;
-
-
   // 1st timestep - state machine
   // delay data and valid signal
 
-  localparam [4:0]
+  localparam [3:0]
       fem_idle       = 4'd0,
       fem_pieces     = 4'd1,
       fem_pieces_sp  = 4'd2,
@@ -44,7 +40,6 @@ module fen_decode(
   reg [7:0] state_data = 0;
   reg       state_valid = 0;
   reg       was_valid_eop = 0;
-  wire pbuffer_empty_full = pbuffer_wraddr == pbuffer_rdaddr;
 
   always_ff @(posedge clk) begin
     // dleay to match decoded state
@@ -61,6 +56,9 @@ module fen_decode(
         state <= fem_output;
     end else if (in_valid) begin
         case (state)
+          fem_idle: begin
+            if (in_sop) state <= fem_pieces;
+          end
           fem_pieces: begin
             if (tok_space) state <= fem_pieces_sp;
           end
@@ -91,7 +89,8 @@ module fen_decode(
           fem_hmclock_sp: begin
             state <= fem_fmclock;
           end
-          fem_fmclock: begin
+          default: begin
+
           end
         endcase
     end
@@ -100,30 +99,28 @@ module fen_decode(
   wire [6*8-1:0] white_pieces = "PNBRQK";
   wire [6*8-1:0] black_pieces = "pnbrqk";
   wire [8*8-1:0] skips = "87654321";
-  wire [5*8-1:0] castle_flags = "KQkq-";
-  wire [9*8-1:0] ep_flags = "abcdefg-";
+  //wire [9*8-1:0] ep_flags = "abcdefgh-";
 
-  wire tok_nextrank = in_data == "/";
   wire [5:0] tok_whitep;
-  wire [5:0] tok_blackp;
   wire [5:0] tok_piecet;
   wire [7:0] tok_skip;
   wire       tok_white;
   wire       tok_piece;
-  wire [7:0] tok_ep;
+  // wire [8:0] tok_ep;
   wire       tok_skips;
 
   genvar i;
   generate
     for(i=0;i<6;i++) begin
       assign tok_whitep[i] = in_data == white_pieces[i*8+:8];
-      assign tok_blackp[i] = in_data == black_pieces[i*8+:8];
       assign tok_piecet[i] = in_data == white_pieces[i*8+:8] | in_data == black_pieces[i*8+:8];
     end
     for(i=0;i<8;i++) begin
       assign tok_skip[i] = in_data == skips[i*8+:8];
-      assign tok_ep[i] = in_data == ep_flags[i*8+:8];
     end
+    //for(i=0;i<9;i++) begin
+    //  assign tok_ep[i] = in_data == ep_flags[i*8+:8];
+    //end
   endgenerate
   assign tok_white = |tok_whitep;
   assign tok_piece = |tok_piecet;
@@ -154,8 +151,8 @@ module fen_decode(
   //          'Q' encodes as 1/010/000 (white, queen, 0 repeats)
   wire [6:0] pbuffer_writedata = {tok_white, bin_piece, bin_skip};
   wire       pbuffer_wr = (tok_piece | tok_skips) & in_valid & ((state == fem_pieces) | in_sop);
-  reg  [4:0] pbuffer_wraddr = 0;
-  reg  [4:0] pbuffer_rdaddr = 0;
+  reg  [5:0] pbuffer_wraddr = 0;
+  reg  [5:0] pbuffer_rdaddr = 0;
 
   always_ff @(posedge clk) begin
       if (pbuffer_wr) begin
@@ -205,7 +202,7 @@ module fen_decode(
     end
   end
 
-  // handle casteling rights
+  // handle castling rights
   always_ff @(posedge clk) begin
     if (state == fem_pieces) begin
       o_castle[3:0] <= 4'b0;
@@ -233,8 +230,6 @@ module fen_decode(
   // handle move and halfmove counters
   wire [15:0] bin_count;
   ascii_int_to_bin moves_asciibin (.clk(clk), .data(in_data[3:0]), .valid(in_valid), .reset(tok_space), .bin(bin_count));
-  reg was_fmclock = 0; // comp for delay in moves_asciibin
-  reg was_hmclock = 0;
   always_ff @(posedge clk) begin
     if (state == fem_hmclock) begin
       o_hmcount <= bin_count;

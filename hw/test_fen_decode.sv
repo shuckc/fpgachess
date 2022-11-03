@@ -1,5 +1,5 @@
 
-module test_top (
+module test_fen_decode (
     input  wire [7:0] data,
     input  wire       clk,
     input  wire       sop,
