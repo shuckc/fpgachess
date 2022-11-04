@@ -7,3 +7,4 @@ results.xml
 fusesoc_libraries
 build
 hw/obj_dir
+fusesoc.conf
