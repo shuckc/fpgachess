@@ -1,0 +1,110 @@
+CAPI=2:
+name : shuckc:fpgachess:uci:0
+
+filesets:
+  rtl:
+    files:
+      - hw/fen_decode.sv : {file_type : verilogSource}
+      - hw/ascii_int_to_bin.sv : {file_type : verilogSource}
+      - hw/onehot_to_bin.sv : {file_type : verilogSource}
+
+  rtltest:
+    files:
+      - hw/test_fen_decode.sv : {file_type : verilogSource}
+
+  ecp5_evn:
+    files:
+      - platform/ecp5_evn/blinky.lpf : {file_type : LPF}
+
+  orangecrab:
+    files:
+      - platform/orangecrab/orangecrab_r02.lpf : {file_type : LPF}
+      - platform/orangecrab/blinky_orangecrab.v : {file_type : verilogSource}
+
+  sky130:
+    files:
+      - platform/sky/sky130.tcl : {file_type : tclSource}
+
+  tb:
+    files:
+      - hw/test_fen_decode.sv : {file_type : verilogSource}
+    depend: [vlog_tb_utils]
+
+targets:
+  default: &default
+    filesets : [rtl, rtltest]
+    toplevel: ["is_toplevel? (test_fen_decode)"]
+    default_tool: icarus
+    tools:
+      icarus:
+        iverilog_options:
+          - -g2012 # Use SystemVerilog-2012
+
+  lint:
+    default_tool : verilator
+    filesets : [rtl]
+    tools:
+      verilator: {mode: lint-only}
+    toplevel: fen_decode
+
+  ecp5_evn:
+    default_tool : trellis
+    description : ECP5 Evaluation Board
+    filesets : [rtl, ecp5_evn]
+    parameters : [clk_freq_hz=12000000]
+    tools:
+      trellis:
+        nextpnr_options : [--um5g-85k --package CABGA381]
+    toplevel : blinky
+
+  orangecrab_r0.2: &orangecrab
+    default_tool : trellis
+    description : OrangeCrab R0.2
+    filesets : [rtl, proginfo, orangecrab]
+    hooks:
+      post_run: [dfu-util]
+    tools:
+      trellis:
+        nextpnr_options : [--package, CSFBGA285, --25k]
+    toplevel : blinky_orangecrab
+
+  sim:
+    default_tool: icarus
+    filesets : [rtl, tb]
+    parameters : [clk_freq_hz, pulses]
+    tools:
+      modelsim:
+        vlog_options: [-timescale=1ns/1ns]
+      xsim:
+        xelab_options: [--timescale, 1ns/1ns]
+      icarus:
+        iverilog_options:
+          - -g2012 # Use SystemVerilog-2012
+    toplevel: blinky_tb
+
+  sky130:
+    default_tool : openlane
+    filesets : [rtl, sky130]
+    toplevel : fen_decode
+
+parameters:
+  clk_freq_hz:
+    datatype    : int
+    description : Clock frequency in Hz
+    paramtype   : vlogparam
+  pulses:
+    datatype    : int
+    description : Number of pulses to run in testbench
+    paramtype   : vlogparam
+
+scripts:
+  iceprog:
+    cmd : [python3, proginfo.py, iceprog]
+  icesprog:
+    cmd : [python3, proginfo.py, icesprog]
+  tinyprog:
+    cmd : [python3, proginfo.py, tinyprog]
+  ujprog:
+    cmd : [python3, proginfo.py, ujprog]
+  dfu-util:
+    cmd : [python3, proginfo.py, dfu-util]
