@@ -4,9 +4,10 @@ name : shuckc:fpgachess:uci:0
 filesets:
   rtl:
     files:
-      - hw/fen_decode.sv : {file_type : verilogSource}
-      - hw/ascii_int_to_bin.sv : {file_type : verilogSource}
-      - hw/onehot_to_bin.sv : {file_type : verilogSource}
+      - hw/fen_decode.sv : {file_type : systemVerilogSource}
+      - hw/ascii_int_to_bin.sv : {file_type : systemVerilogSource}
+      - hw/onehot_to_bin.v : {file_type : verilogSource}
+      - hw/blinky.v : {file_type : verilogSource}
 
   rtltest:
     files:
@@ -29,6 +30,9 @@ filesets:
     files:
       - hw/test_fen_decode.sv : {file_type : verilogSource}
     depend: [vlog_tb_utils]
+
+  proginfo:
+    files: [sw/proginfo.py : {file_type : user, copyto : proginfo.py}]
 
 targets:
   default: &default

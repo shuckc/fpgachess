@@ -15,7 +15,7 @@ RUN_ARGS += -Wall -Wimplicit
 # SIM_ARGS += -Wall -Wimplicit
 
 VERILOG_SOURCES += $(PWD)/hw/fen_decode.sv
-VERILOG_SOURCES += $(PWD)/hw/onehot_to_bin.sv
+VERILOG_SOURCES += $(PWD)/hw/onehot_to_bin.v
 VERILOG_SOURCES += $(PWD)/hw/ascii_int_to_bin.sv
 
 TOPLEVEL = fen_decode
