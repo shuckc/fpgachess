@@ -4,7 +4,12 @@ import logging
 from cocotb.triggers import Timer, Event, RisingEdge, FallingEdge, ReadOnly
 from cocotb.queue import Queue
 from cocotb.binary import BinaryValue
+import itertools
 
+def IdleToggler():
+    while True:
+        yield True
+        yield False
 
 class StreamDriver:
     """Basic 8-bit data with sop/eop markers and valid bits."""
@@ -20,22 +25,29 @@ class StreamDriver:
         self.results = Queue()
         cocotb.fork(self._run())
 
-    async def send(self, bs: bytes):
-        await self.queue.put(bs)
+    async def send(self, bs: bytes, idler=itertools.repeat(True)):
+        await self.queue.put((bs, idler))
         await self.results.get()
 
     async def _run(self):
         try:
             self.valid.value = 0
             while True:
-                bs = await self.queue.get()
+                bs, idler = await self.queue.get()
                 for i, b in enumerate(bs):
                     await RisingEdge(self.clock)
+                    while not next(idler):
+                        self.valid.value = 0
+                        self.eop.value = BinaryValue("x")
+                        self.data.value = BinaryValue("x")
+                        self.sop.value = BinaryValue("x")
+                        await RisingEdge(self.clock)
                     # self.log.info(f"Write byte 0x{b:02x}")
                     self.valid.value = 1
                     self.data.value = b
                     self.sop.value = i == 0
                     self.eop.value = i == len(bs) - 1
+
                 await RisingEdge(self.clock)
                 self.valid.value = 0
                 self.eop.value = BinaryValue("x")

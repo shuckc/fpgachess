@@ -6,7 +6,7 @@ from cocotb.triggers import Timer, Event, RisingEdge, FallingEdge, ReadOnly
 from cocotb.clock import Clock
 from cocotb.queue import Queue
 from cocotb.binary import BinaryValue
-from .drivers import StreamDriver, StreamReceiver
+from .drivers import StreamDriver, StreamReceiver, IdleToggler
 
 
 class FENDriver(StreamDriver):
@@ -16,11 +16,11 @@ class FENDriver(StreamDriver):
     Over a UART you could send a linebreak to indicate the end.
     """
 
-    async def send(self, fenstr: str):
+    async def send(self, fenstr: str, **kwargs):
         # validates or fires exception
         chess.Board(fenstr)
         bs = fenstr.encode()
-        await super().send(bs)
+        await super().send(bs, **kwargs)
 
 
 @cocotb.test()
@@ -66,7 +66,7 @@ async def test_fen_opening(dut):
     await Timer(5, units="ns")
     await RisingEdge(dut.clk)  # wait for falling edge/"negedge"
 
-    await fd.send("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    await fd.send("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", idler=IdleToggler())
     bs = await rcv.recv()
     assert dut.o_hmcount.value == 0, "halfmove is not 0"
     assert dut.o_fmcount.value == 1, "fullmove is not 29"
