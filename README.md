@@ -9,20 +9,21 @@ Aim is to speak UCI over a UART, or some simpler protocol, then to generate scor
 
 Tests
 ---
-Test bench implemented with cocotb:
+Test bench implemented with `cocotb` and `cocotb-test`:
 
     $ python3 -m venv venv
     $ . venv/bin/activate
     $ pip install -r requirements.txt
-    $ make
+    $ SIM=icarus pytest -o log_cli=True tests
 
 OR
 
     $ docker build .
 
-To view waves
+To build/view waves
 
-    $ gtkwave sim_build/test_fen_decode.vcd gtksaves/test_fen_decode.gtkw
+    $ WAVES=1 pytest -o log_cli=True tests
+    $ gtkwave sim_build/fen_decode.fst gtksaves/test_fen_decode.gtkw
 
 
 Hardware

@@ -9,11 +9,11 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install -r /app/requirements.txt
 RUN apt-get install -y verilator
-COPY Makefile /app/
 COPY tests /app/tests
 COPY hw /app/hw/
 RUN make -C hw lint
 RUN black --check --diff /app/tests
-RUN make
+RUN pytest -o log_cli=True tests
+
 
 

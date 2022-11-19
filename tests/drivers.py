@@ -6,10 +6,12 @@ from cocotb.queue import Queue
 from cocotb.binary import BinaryValue
 import itertools
 
+
 def IdleToggler():
     while True:
         yield True
         yield False
+
 
 class StreamDriver:
     """Basic 8-bit data with sop/eop markers and valid bits."""

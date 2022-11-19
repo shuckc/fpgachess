@@ -6,7 +6,8 @@ from cocotb.triggers import Timer, Event, RisingEdge, FallingEdge, ReadOnly
 from cocotb.clock import Clock
 from cocotb.queue import Queue
 from cocotb.binary import BinaryValue
-from .drivers import StreamDriver, StreamReceiver, IdleToggler
+
+from drivers import StreamDriver, StreamReceiver, IdleToggler
 
 
 class FENDriver(StreamDriver):
@@ -28,7 +29,9 @@ async def test_fen_decode(dut):
     await cocotb.start(Clock(dut.clk, 1000).start())
 
     fd = FENDriver(dut.clk, dut.in_valid, dut.in_data, dut.in_sop, dut.in_eop)
-    rcv = StreamReceiver(dut.clk, dut.o_pos_valid, dut.o_pos_data, dut.o_pos_sop, dut.o_pos_eop)
+    rcv = StreamReceiver(
+        dut.clk, dut.o_pos_valid, dut.o_pos_data, dut.o_pos_sop, dut.o_pos_eop
+    )
     await Timer(5, units="ns")
     await RisingEdge(dut.clk)  # wait for falling edge/"negedge"
 
@@ -62,11 +65,15 @@ async def test_fen_decode(dut):
 async def test_fen_opening(dut):
     await cocotb.start(Clock(dut.clk, 1000).start())
     fd = FENDriver(dut.clk, dut.in_valid, dut.in_data, dut.in_sop, dut.in_eop)
-    rcv = StreamReceiver(dut.clk, dut.o_pos_valid, dut.o_pos_data, dut.o_pos_sop, dut.o_pos_eop)
+    rcv = StreamReceiver(
+        dut.clk, dut.o_pos_valid, dut.o_pos_data, dut.o_pos_sop, dut.o_pos_eop
+    )
     await Timer(5, units="ns")
     await RisingEdge(dut.clk)  # wait for falling edge/"negedge"
 
-    await fd.send("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", idler=IdleToggler())
+    await fd.send(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", idler=IdleToggler()
+    )
     bs = await rcv.recv()
     assert dut.o_hmcount.value == 0, "halfmove is not 0"
     assert dut.o_fmcount.value == 1, "fullmove is not 29"
@@ -91,4 +98,3 @@ async def test_fen_opening(dut):
     for i in range(64):
         assert bs[i] == expected[i], f"at cell {i} expected {expected[i]}"
     await Timer(20, units="ns")
-
