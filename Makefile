@@ -18,6 +18,12 @@ VERILOG_SOURCES += $(PWD)/hw/fen_decode.sv
 VERILOG_SOURCES += $(PWD)/hw/onehot_to_bin.v
 VERILOG_SOURCES += $(PWD)/hw/ascii_int_to_bin.sv
 
+ifeq ($(SIM), icarus)
+    VERILOG_SOURCES += $(PWD)/hw/iverilog_dump.sv
+	COMPILE_ARGS += -s iverilog_dump
+	PLUSARGS += -lxt2
+endif
+
 TOPLEVEL = fen_decode
 
 # MODULE is the basename of the Python test file
