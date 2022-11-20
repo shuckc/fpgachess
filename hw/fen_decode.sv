@@ -151,8 +151,8 @@ module fen_decode(
   //          'Q' encodes as 1/010/000 (white, queen, 0 repeats)
   wire [6:0] pbuffer_writedata = {tok_white, bin_piece, bin_skip};
   wire       pbuffer_wr = (tok_piece | tok_skips) & in_valid & ((state == fem_pieces) | in_sop);
-  reg  [5:0] pbuffer_wraddr = 0;
-  reg  [5:0] pbuffer_rdaddr = 0;
+  reg  [6:0] pbuffer_wraddr = 0;
+  reg  [6:0] pbuffer_rdaddr = 0;
 
   always_ff @(posedge clk) begin
       if (pbuffer_wr) begin
@@ -162,7 +162,7 @@ module fen_decode(
       end
 
       if (pbuffer_wr) begin
-         pbuffer[pbuffer_wraddr] <= pbuffer_writedata;
+         pbuffer[pbuffer_wraddr[5:0]] <= pbuffer_writedata;
       end
   end
 
@@ -173,7 +173,7 @@ module fen_decode(
   wire [2:0] rd_bin_piece;
   wire       rd_bin_wtp;
   reg [2:0]  rd_skip_count = 0;
-  assign {rd_bin_wtp, rd_bin_piece, rd_bin_skip} = pbuffer[pbuffer_rdaddr];
+  assign {rd_bin_wtp, rd_bin_piece, rd_bin_skip} = pbuffer[pbuffer_rdaddr[5:0]];
 
   wire last_pubffer_cycle = (pbuffer_rdaddr + 1) == pbuffer_wraddr;
   wire last_skip_cycle = rd_bin_skip == rd_skip_count;

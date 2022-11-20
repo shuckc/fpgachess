@@ -70,22 +70,33 @@ class StreamReceiver:
         self.sop = sop
         self.eop = eop
         self.results = Queue()
+        self.timeout_queue = Queue()
         self.bursts = []
         cocotb.fork(self._run())
 
-    async def recv(self):
+    async def recv(self, timeout=2000):
+        await self.timeout_queue.put(timeout)
         return await self.results.get()
 
     async def _run(self):
         while True:
-            await RisingEdge(self.clock)
-            await ReadOnly()
-            if self.valid.value:
-                if not self.bursts and self.sop.value == False:
-                    raise Exception("start of burst no sop")
-                self.bursts.append(self.data.value.integer.to_bytes(1, "little"))
-                b = self.data.value
-                # self.log.info(f"Read byte 0x{b}")
-                if self.eop.value:
-                    await self.results.put(b"".join(self.bursts))
-                    self.bursts = []
+            timeout = await self.timeout_queue.get()
+            cycle = 0
+            while True:
+                await RisingEdge(self.clock)
+                await ReadOnly()
+                cycle = cycle + 1
+                if self.valid.value:
+                    if not self.bursts and self.sop.value == False:
+                        raise Exception("start of burst no sop")
+                    self.bursts.append(self.data.value.integer.to_bytes(1, "little"))
+                    b = self.data.value
+                    # self.log.info(f"Read byte 0x{b}")
+                    if self.eop.value:
+                        await self.results.put(b"".join(self.bursts))
+                        self.bursts = []
+                        break
+                if cycle > timeout:
+                    raise Exception(
+                        f"StreamReciever hit timeout after {timeout} cycles"
+                    )

@@ -58,7 +58,7 @@ async def test_fen_decode(dut):
     )
     for i in range(64):
         assert bs[i] == expected[i], f"at cell {i} expected {expected[i]}"
-    await Timer(20, units="ns")
+    await Timer(2000, units="ns")
 
 
 @cocotb.test()
@@ -97,4 +97,42 @@ async def test_fen_opening(dut):
     )
     for i in range(64):
         assert bs[i] == expected[i], f"at cell {i} expected {expected[i]}"
-    await Timer(20, units="ns")
+    await Timer(2000, units="ns")
+
+
+@cocotb.test()
+async def test_longest_fenstring(dut):
+
+    await cocotb.start(Clock(dut.clk, 1000).start())
+    fd = FENDriver(dut.clk, dut.in_valid, dut.in_data, dut.in_sop, dut.in_eop)
+    rcv = StreamReceiver(
+        dut.clk, dut.o_pos_valid, dut.o_pos_data, dut.o_pos_sop, dut.o_pos_eop
+    )
+    await Timer(5, units="ns")
+    await RisingEdge(dut.clk)  # wait for falling edge/"negedge"
+
+    # 32 pieces, 64 squares, alternate
+    # worst case fill of the internal FIFO
+    await fd.send(
+        "r1n1b1q1/k1b1n1r1/p1p1p1p1/p1p1p1p1/P1P1P1P1/P1P1P1P1/R1N1B1Q1/K1B1N1R1 w KQkq - 0 1",
+        idler=IdleToggler(),
+    )
+    bs = await rcv.recv()
+    #  K Q R B N P
+    #  1 2 3 4 5 6   +0 black (lower case)
+    #  9 A B C D E   +8 white (upper case)
+    assert len(bs) == 64
+    expected = (
+        b""
+        + b"\x03\x00\x05\x00\x04\x00\x02\x00"
+        + b"\x01\x00\x04\x00\x05\x00\x03\x00"
+        + b"\x06\x00\x06\x00\x06\x00\x06\x00"
+        + b"\x06\x00\x06\x00\x06\x00\x06\x00"
+        + b"\x0E\x00\x0E\x00\x0E\x00\x0E\x00"
+        + b"\x0E\x00\x0E\x00\x0E\x00\x0E\x00"
+        + b"\x0B\x00\x0D\x00\x0C\x00\x0A\x00"
+        + b"\x09\x00\x0C\x00\x0D\x00\x0B\x00"
+    )
+    for i in range(64):
+        assert bs[i] == expected[i], f"at cell {i} expected {expected[i]}"
+    await Timer(2000, units="ns")
