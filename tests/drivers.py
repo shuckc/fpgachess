@@ -21,11 +21,12 @@ class StreamDriver:
         self.clock = clock
         self.valid = valid
         self.data = data
+        self.data_width = len(data)
         self.sop = sop
         self.eop = eop
         self.queue = Queue()
         self.results = Queue()
-        cocotb.fork(self._run())
+        cocotb.start_soon(self._run())
 
     async def send(self, bs: bytes, idler=itertools.repeat(True)):
         await self.queue.put((bs, idler))
@@ -41,7 +42,7 @@ class StreamDriver:
                     while not next(idler):
                         self.valid.value = 0
                         self.eop.value = BinaryValue("x")
-                        self.data.value = BinaryValue("x")
+                        self.data.value = BinaryValue("x" * self.data_width)
                         self.sop.value = BinaryValue("x")
                         await RisingEdge(self.clock)
                     # self.log.info(f"Write byte 0x{b:02x}")
@@ -53,7 +54,7 @@ class StreamDriver:
                 await RisingEdge(self.clock)
                 self.valid.value = 0
                 self.eop.value = BinaryValue("x")
-                self.data.value = BinaryValue("x")
+                self.data.value = BinaryValue("x" * self.data_width)
                 self.sop.value = BinaryValue("x")
                 await RisingEdge(self.clock)
                 await self.results.put(True)
@@ -72,7 +73,7 @@ class StreamReceiver:
         self.results = Queue()
         self.timeout_queue = Queue()
         self.bursts = []
-        cocotb.fork(self._run())
+        cocotb.start_soon(self._run())
 
     async def recv(self, timeout=2000):
         await self.timeout_queue.put(timeout)
