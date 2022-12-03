@@ -10,8 +10,7 @@ class IcarusAutoTimescale(Icarus):
         return super().compile_command()
 
 
-simulator.Icarus = IcarusAutoTimescale
-
+# simulator.Icarus = IcarusAutoTimescale
 
 def test_fen_decode():
     run(

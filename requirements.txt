@@ -2,8 +2,8 @@ attrs==21.4.0
 black==22.10.0
 chess==1.8.0
 click==8.1.3
-cocotb==1.6.1
-cocotb-test==0.2.2
+-e git+ssh://git@github.com/cocotb/cocotb.git@196f26c17ea5de2868ccc09180a3f66e310458bf#egg=cocotb
+-e git+ssh://git@github.com/shuckc/cocotb-test.git@929805bfb1e09b6f47c61e8429901a6c8c076347#egg=cocotb_test
 iniconfig==1.1.1
 mypy-extensions==0.4.3
 packaging==21.3
