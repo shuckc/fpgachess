@@ -22,3 +22,19 @@ def test_fen_decode():
         toplevel="fen_decode",
         module="cocotb_fen_decode",
     )
+
+def test_psudo_legal_moves():
+    run(
+        verilog_sources=[
+            "hw/onehot_to_bin.v",
+            "hw/psudolegal_board.sv",
+            "hw/movegen_square.sv",
+            "hw/movegen_lookup_output.sv",
+            "hw/arbiter.v",
+        ],
+        toplevel="psudolegal_board",
+        module="cocotb_psudolegal_board",
+        waves=True,
+    )
+
+
