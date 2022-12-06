@@ -30,6 +30,8 @@ def test_psudo_legal_moves():
             "hw/psudolegal_board.sv",
             "hw/movegen_square.sv",
             "hw/movegen_lookup_output.sv",
+            "hw/movegen_rankfile.sv",
+            "hw/movegen_piece_stack.sv",
             "hw/arbiter.v",
         ],
         toplevel="psudolegal_board",

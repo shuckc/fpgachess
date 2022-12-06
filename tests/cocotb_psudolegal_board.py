@@ -7,7 +7,7 @@ from cocotb.clock import Clock
 from cocotb.queue import Queue
 from cocotb.binary import BinaryValue
 
-from drivers import StreamDriver, StreamReceiver, IdleToggler
+from drivers import StreamDriver, StreamReceiver, IdleToggler, StrobeDriver
 from cocotb_fen_decode import get_binary_board
 
 class BinaryBoardDriver(StreamDriver):
@@ -46,25 +46,29 @@ class BinaryBoardDriver(StreamDriver):
 #  9 A B C D E   +8 white (upper case)
 
 
+class StreamValueReceiver(StreamReceiver):
+    def extract(self, value):
+        return value
+    def compact(self, results):
+        return results
+
 @cocotb.test()
 async def test_psudo_legal_moves(dut):
 
     await cocotb.start(Clock(dut.clk, 1000).start())
     fd = BinaryBoardDriver(dut.clk, dut.in_pos_valid, dut.in_pos_data, dut.in_pos_sop, dut.in_pos_eop, None, None, dut.in_wtp, dut.in_castle, dut.in_ep)
-    rcv = StreamReceiver(
+    rcv = StreamValueReceiver(
         dut.clk, dut.o_uci_valid, dut.o_uci_data, dut.o_uci_sop, dut.o_uci_eop
     )
+    start_strobe = StrobeDriver(dut.clk, dut.start)
     await Timer(5, units="ns")
     await RisingEdge(dut.clk)  # wait for falling edge/"negedge"
 
     board = await fd.send(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", idler=IdleToggler()
     )
+    await start_strobe.strobe()
     bs = await rcv.recv()
 
     plm = list(board.pseudo_legal_moves)
-    assert(bs.len == len(plm))
-    #
-    #
-    #
-    #
+    assert(len(bs) == len(plm))

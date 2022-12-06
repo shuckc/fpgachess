@@ -62,6 +62,37 @@ class StreamDriver:
             self.log.exception("ohno")
 
 
+class StrobeDriver:
+    def __init__(self, clock, valid):
+        self.log = logging.getLogger(f"cocotb.{valid._path}")
+        self.clock = clock
+        self.valid = valid
+        self.queue = Queue()
+        self.results = Queue()
+        cocotb.start_soon(self._run())
+
+    async def strobe(self, idler=itertools.repeat(True)):
+        await self.queue.put((b'1', idler))
+        await self.results.get()
+
+    async def _run(self):
+        try:
+            self.valid.value = 0
+            while True:
+                bs, idler = await self.queue.get()
+                for i, b in enumerate(bs):
+                    await RisingEdge(self.clock)
+                    while not next(idler):
+                        self.valid.value = 0
+                        await RisingEdge(self.clock)
+                    self.valid.value = 1
+
+                await RisingEdge(self.clock)
+                self.valid.value = 0
+                await self.results.put(True)
+        except Exception:
+            self.log.exception("ohno")
+
 class StreamReceiver:
     def __init__(self, clock, valid, data, sop, eop):
         self.log = logging.getLogger(f"cocotb.{data._path}")
@@ -79,8 +110,15 @@ class StreamReceiver:
         await self.timeout_queue.put(timeout)
         return await self.results.get()
 
+    def extract(self, value):
+        return value.integer.to_bytes(1, "little")
+
+    def compact(self, burst):
+        return b"".join(burst)
+
     async def _run(self):
         while True:
+            burst = []
             timeout = await self.timeout_queue.get()
             cycle = 0
             while True:
@@ -88,16 +126,18 @@ class StreamReceiver:
                 await ReadOnly()
                 cycle = cycle + 1
                 if self.valid.value:
-                    if not self.bursts and self.sop.value == False:
+                    self.log.info(f"Read byte valid={self.valid.value} data={self.data.value} sop={self.sop.value} eop={self.eop.value}")
+
+                    if not burst and self.sop.value == False:
                         raise Exception("start of burst no sop")
-                    self.bursts.append(self.data.value.integer.to_bytes(1, "little"))
-                    b = self.data.value
-                    # self.log.info(f"Read byte 0x{b}")
+                    burst.append(self.extract(self.data.value))
                     if self.eop.value:
-                        await self.results.put(b"".join(self.bursts))
-                        self.bursts = []
+                        await self.results.put(self.compact(burst))
                         break
                 if cycle > timeout:
-                    raise Exception(
-                        f"StreamReciever hit timeout after {timeout} cycles"
+                    value = self.compact(burst)
+                    e = Exception(
+                        f"StreamReciever hit timeout after {timeout} cycles. Pending data: {value}"
                     )
+                    e.value = value
+                    raise e
