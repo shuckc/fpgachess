@@ -27,6 +27,7 @@ def test_psudo_legal_moves():
     run(
         verilog_sources=[
             "hw/onehot_to_bin.v",
+            "hw/onehot_from_bin.v",
             "hw/psudolegal_board.sv",
             "hw/movegen_square.sv",
             "hw/movegen_lookup_output.sv",
