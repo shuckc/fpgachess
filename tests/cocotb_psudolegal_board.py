@@ -8,7 +8,7 @@ from cocotb.queue import Queue
 from cocotb.binary import BinaryValue
 
 from drivers import StreamDriver, StreamReceiver, IdleToggler, StrobeDriver
-from cocotb_fen_decode import get_binary_board
+from cocotb_fen_decode import get_binary_board, BINARY_PIECE
 
 class BinaryBoardDriver(StreamDriver):
     def __init__(self, clock, valid, data, sop, eop, hmcount, fmcount, wtp, castle, ep):
@@ -43,14 +43,21 @@ class BinaryBoardDriver(StreamDriver):
 
 #  K Q R B N P
 #  1 2 3 4 5 6   +0 black (lower case)
+#  k q r b n p
 #  9 A B C D E   +8 white (upper case)
-
-
 class StreamValueReceiver(StreamReceiver):
     def extract(self, value):
         return value
     def compact(self, results):
         return results
+
+
+def encodeItem(piece, square):
+    # we strip the player bit in this encoding, as that is used for bank select
+    b = BINARY_PIECE[piece] & 7
+    file = "abcdefgh".index(square[0])
+    rank = "12345678".index(square[1])
+    return (1 << 9) + (b << 6) + (rank << 3) + file
 
 @cocotb.test()
 async def test_psudo_legal_moves(dut):
@@ -67,6 +74,23 @@ async def test_psudo_legal_moves(dut):
     board = await fd.send(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", idler=IdleToggler()
     )
+    # assert pos within board squares to ensure fen serial load ordering correct
+    assert dut.rank[0].file[0].movegen_square.pos.value == BINARY_PIECE['R'] # a1 = R
+    assert dut.rank[0].file[4].movegen_square.pos.value == BINARY_PIECE['K'] # e1 = K
+    assert dut.rank[7].file[4].movegen_square.pos.value == BINARY_PIECE['k'] # e8 = k
+    assert dut.rank[7].file[0].movegen_square.pos.value == BINARY_PIECE['r'] # a8 = r
+
+    # assert black move stack (last piece is top)
+    assert dut.item[0].movegen_piece_black.out_data.value == encodeItem('p', 'h7')
+    assert dut.item[1].movegen_piece_black.out_data.value == encodeItem('p', 'g7')
+    assert dut.item[15].movegen_piece_black.out_data.value == encodeItem('r', 'a8')
+
+    # white move stack (last piece is top)
+    assert dut.item[0].movegen_piece_white.out_data.value == encodeItem('R', 'h1')
+    assert dut.item[1].movegen_piece_white.out_data.value == encodeItem('N', 'g1')
+    assert dut.item[15].movegen_piece_white.out_data.value == encodeItem('p', 'a2')
+
+
     await start_strobe.strobe()
     bs = await rcv.recv()
 

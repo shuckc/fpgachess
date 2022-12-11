@@ -190,8 +190,8 @@ module psudolegal_board(
         movegen_square #(.RANK(r+1), .FILE(f+1)) movegen_square (
           .clk(clk),
           .in_pos_valid(in_pos_valid),
-          .in_pos_data( pos_interconnect[(r*8+f+0)*4 +: 4]),
-          .out_pos_data(pos_interconnect[(r*8+f+1)*4 +: 4]),
+          .in_pos_data( pos_interconnect[(r*8+(7-f)+0)*4 +: 4]),
+          .out_pos_data(pos_interconnect[(r*8+(7-f)+1)*4 +: 4]),
 
           // trigger for this square to emit, and signalling
           // a valid destination
