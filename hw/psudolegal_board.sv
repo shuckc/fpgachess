@@ -170,7 +170,7 @@ module psudolegal_board(
   // convert the current cell uci_move_from coordinates from piece_stack to a
   // one-hot signal routed to the board square
   onehot_from_bin #(.WIDTH(64)) onehot_from_bin(
-    .in({uci_move_from_f, uci_move_from_r}),
+    .in({uci_move_from_r, uci_move_from_f}),
     .out(square_from)
   );
 
