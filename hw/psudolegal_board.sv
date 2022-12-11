@@ -267,8 +267,8 @@ module psudolegal_board(
         // assign square_from[r*8+f] = movegen_square;
       end
 
-      assign w_pn[r*8 + 0] = 0; // no incoming N
-      assign w_ps[r*8 + 7] = 0; // no incoming S
+      assign w_pn[0 + r] = 0; // no incoming N
+      assign w_ps[64 + r] = 0; // no incoming S
 
     end
   endgenerate

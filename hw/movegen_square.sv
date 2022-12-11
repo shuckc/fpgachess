@@ -137,12 +137,12 @@ module movegen_square #(
   // but they will get pruned back to b/g files where they are last used
   wire castle_move;
   generate
-    if (RANK == 1 && FILE == 5) begin // e1_king
+    if (RANK == 1 && FILE == 5) begin // e1_king square
       assign o_castle_w = i_castle_rights[0]; // TODO check index into castle
       assign o_castle_e = i_castle_rights[1];
       assign castle_move = 0;
     end
-    else if (RANK == 8 && FILE == 5) begin // e8_king
+    else if (RANK == 8 && FILE == 5) begin // e8 king square
       assign o_castle_w = i_castle_rights[2];
       assign o_castle_e = i_castle_rights[3];
       assign castle_move = 0;
