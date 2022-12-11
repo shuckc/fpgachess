@@ -154,13 +154,12 @@ module psudolegal_board(
   // square_from signals this occupied square to outputing its moves
   // any square with an incoming ray outputs its target_square signal.
   //
-  // ie. emit_move --> o_{dir} signals --> i_{dir} signals --> target_square
-  //
+  // ie. emit_move --> o_{piece}{dir} signal --> i_{piece}{dir} signal --> target_square
   //
   // squares do not output their piece, this is done by memories clocked from
   // the serial load ports in paralell to the serial load.
   //
-  // All 64 target_square bits are fed into an abritrator to iterate the psuado-valid
+  // All 64 target_square bits are fed into an abritrator to iterate the psudo-valid
   // moves that can be made from the selected piece (perhaps none).
   //
   wire [63:0] square_from;   // one-hot, only 1sq holds token at once
@@ -181,12 +180,19 @@ module psudolegal_board(
   // board move interconnect, each following the name of the driving pins
   wire [9*8-1:0] w_pn, w_ps;
 
+  // for knight wiring center 8x8 board within a 12x12, ie. with 2 padding all round
+  wire [12*12-1:0] w_nnne, w_nnnw, w_nsse, w_nssw, w_neen, w_nees, w_nwwn, w_nwws;
+
   genvar r,f;
   generate
     for (r=0; r<8; r=r+1)
     begin: rank // rows
       for (f=0; f<8; f=f+1)
       begin: file // columns
+        // knight rank, knight file, on the 12x12 board
+        // nr = r + 2;
+        // nf = f + 2;
+
         movegen_square #(.RANK(r+1), .FILE(f+1)) movegen_square (
           .clk(clk),
           .in_pos_valid(in_pos_valid),
@@ -245,7 +251,8 @@ module psudolegal_board(
           .o_snw(),   .i_sse(),
 
           // knight L-moves, these skip the intermediate squares
-          // TODO: knights
+          .o_nnne(w_nnne[(r+4)*12 + (f+3)]),  .i_nssw(w_nnne[(r+2)*12 + (f+2)]),
+          .o_nnnw(w_nnnw[(r+4)*12 + (f+1)]),  .i_nsse(w_nnnw[(r+2)*12 + (f+2)]),
 
           // 4-bit castelling rights for KQkq are input to all squares,
           // but only used by king squares e1 e8. If the rights are present,
@@ -270,6 +277,22 @@ module psudolegal_board(
       assign w_pn[0 + r] = 0; // no incoming N
       assign w_ps[64 + r] = 0; // no incoming S
 
+    end
+  endgenerate
+
+  genvar nr,nf;
+  generate
+    for (nr=0; nr<12; nr=nr+1)
+    begin: nrank // rows
+      for (nf=0; nf<12; nf=nf+1)
+      begin: nfile // columns
+        if (nr < 4 || nf < 3 || nf > 10) begin
+          assign w_nnne[nr*12 + nf] = 0;
+        end
+        if (nr < 4 || nf < 1 || nf > 8) begin
+          assign w_nnnw[nr*12 + nf] = 0;
+        end
+      end
     end
   endgenerate
 

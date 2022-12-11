@@ -61,6 +61,12 @@ module movegen_square #(
   input logic   i_se,
   input logic   i_sse,
 
+  // knight moves
+  output        o_nnne,
+  output        o_nnnw,
+  input logic   i_nsse,
+  input logic   i_nssw,
+
   // castle
   output        o_castle_e,
   output        o_castle_w,
@@ -95,11 +101,13 @@ module movegen_square #(
   //  K Q R B N P
   //  1 2 3 4 5 6   +0 black (lower case)
   //  9 A B C D E   +8 white (upper case)
+  assign p_king   = piece == 3'h1;
   assign p_queen  = piece == 3'h2;
   assign p_rook   = piece == 3'h3;
   assign p_bishop = piece == 3'h4;
+  assign p_knight = piece == 3'h5;
 
-  // pawn moves out
+  // pawn moves out (direction depends on colour!)
   wire pn = (emit_move & pos == 4'hE);
   assign o_pn  = pn || (RANK == 3 & i_ps & sq_empty); // double-move
   assign o_pne = pn;
@@ -110,7 +118,7 @@ module movegen_square #(
   assign o_psw = ps;
 
   // king moves out
-  wire k = emit_move & (piece == 3'h1);
+  wire k = emit_move & p_king;
   assign o_kn  = k;
   assign o_kne = k;
   assign o_ke  = k;
@@ -131,6 +139,11 @@ module movegen_square #(
   assign o_sse = slide_diag | (sq_empty & i_snw);
   assign o_ssw = slide_diag | (sq_empty & i_sne);
   assign o_snw = slide_diag | (sq_empty & i_sse);
+
+  // knight out
+  wire n = emit_move & p_knight;
+  assign o_nnne = n;
+  assign o_nnnw = n;
 
   // castling
   // we propagate castle signals right out to the edge of the board
@@ -169,7 +182,9 @@ module movegen_square #(
   assign pawn_take = (i_pne | i_pse | i_psw | i_pnw) & sq_oppos;
   assign king_move = (i_kn | i_kne | i_ke | i_kse | i_ks | i_ksw | i_kw | i_knw) & (sq_empty | sq_oppos);
   assign slide_move = (i_ss | i_sn | i_sw | i_se | i_ssw | i_snw | i_sne | i_sse) & (sq_empty | sq_oppos);
+  assign knight_move = (i_nsse | i_nssw) & (sq_empty | sq_oppos);
+
   //assign target_square = pawn_move | pawn_take | king_move | slide_move | castle_move;
-  assign target_square = pawn_move; // | pawn_take | king_move | slide_move | castle_move;
+  assign target_square = pawn_move || knight_move; // | pawn_take | king_move | slide_move | castle_move;
 
 endmodule
