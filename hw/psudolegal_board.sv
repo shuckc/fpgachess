@@ -37,11 +37,40 @@ module psudolegal_board(
   wire [19:0] o_uci_data_w;
   assign o_uci_data_w = {uci_move_promote, uci_move_piece, uci_move_from_r, uci_move_from_f, uci_move_takes, uci_move_to_r, uci_move_to_f};
   reg r_load_pieces_d = 0;
+
+  // the signal to know if this was the *last* valid move is very long
+  // piece stack -> square_from -> board -> square_to -> arbiter
+  // and it's impossible to know if the remaining pieces will generate
+  // and valid moves. So we emit the generated moves 'one behind', by
+  // buffering it until we know there is one more or we've reached the
+  // last piece's output moves, in which case we flush with EOP.
+  reg [19:0] o_uci_buffer_data = 0;
+  reg        o_uci_buffer_valid = 0;
+  reg        o_uci_buffer_sop = 0;
+  reg done_sop = 0;
+
+  wire       o_uci_data_valid = stack_interconnect_to_play_o[9] & ~square_done;
+  wire last_piece_is_done = !stack_interconnect_to_play_o[10+9] & square_done;
   always_ff @(posedge clk) begin
-    o_uci_data <= o_uci_data_w;
-    o_uci_valid <= stack_interconnect_to_play_o[9];
-    o_uci_sop <= r_load_pieces_d;
-    o_uci_eop <= !stack_interconnect_to_play_o[10+9];
+
+    // clock generated data into buffer
+    if (o_uci_data_valid) begin
+      o_uci_buffer_data  <= o_uci_data_w;
+      o_uci_buffer_sop <= o_uci_data_valid & !done_sop;
+    end
+    if (o_uci_data_valid || last_piece_is_done) begin
+      o_uci_buffer_valid <= o_uci_data_valid;
+      done_sop <= (done_sop | o_uci_data_valid) & !last_piece_is_done;
+    end
+
+    // in the cycle after o_uci_data_valid, a square_done signal
+    // indicates the buffered move was the last for this piece, and if the
+    // piece stack was also the last item, buffered item is last move.
+    o_uci_data <= o_uci_buffer_data;
+    o_uci_sop <= o_uci_buffer_sop;
+    o_uci_valid <= o_uci_buffer_valid && (o_uci_data_valid || last_piece_is_done);
+    o_uci_eop <= last_piece_is_done;
+
     r_load_pieces_d <= load_pieces;
   end
 
@@ -132,7 +161,9 @@ module psudolegal_board(
   assign uci_move_from_r = stack_interconnect_to_play_o[3 +: 3];
   assign uci_move_piece = stack_interconnect_to_play_o[6 +: 3];
 
-  assign next_piece = 1;
+  // we jump to the next piece if there are no more destinations
+  // for this piece
+  assign next_piece = !(|square_to_arb);
   //always @(posedge clk) begin
   //  o_uci_data <= o_uci_data_w;
   //end
@@ -154,7 +185,7 @@ module psudolegal_board(
   // square_from signals this occupied square to outputing its moves
   // any square with an incoming ray outputs its target_square signal.
   //
-  // ie. emit_move --> o_{piece}{dir} signal --> i_{piece}{dir} signal --> target_square
+  // ie. emit_move -> o_{piece}{dir} signal -> i_{piece}{dir} signal -> target_square
   //
   // squares do not output their piece, this is done by memories clocked from
   // the serial load ports in paralell to the serial load.
@@ -211,7 +242,7 @@ module psudolegal_board(
           //  valid only if taking.
           // from      to
           .o_pn(w_pn[(r+1)*8 + f]),  .i_ps(w_pn[r*8 + f]),
-          .o_ps(w_ps[(r+1)*8 + f]),  .i_pn(w_ps[r*8 + f]),
+          .o_ps(w_ps[r*8 + f]),      .i_pn(w_ps[(r+1)*8 + f]),
           .o_pne(),   .i_psw(),
           .o_pnw(),   .i_pse(),
           .o_pse(),   .i_pnw(),
@@ -251,8 +282,15 @@ module psudolegal_board(
           .o_snw(),   .i_sse(),
 
           // knight L-moves, these skip the intermediate squares
-          .o_nnne(w_nnne[(r+4)*12 + (f+3)]),  .i_nssw(w_nnne[(r+2)*12 + (f+2)]),
-          .o_nnnw(w_nnnw[(r+4)*12 + (f+1)]),  .i_nsse(w_nnnw[(r+2)*12 + (f+2)]),
+          // r+2, f+2 translates us to the square on the 12x12 knight board
+          .o_nnne(w_nnne[(r+2+2)*12 + (f+2+1)]),  .i_nssw(w_nnne[(r+2)*12 + (f+2)]),
+          .o_nnnw(w_nnnw[(r+2+2)*12 + (f+2-1)]),  .i_nsse(w_nnnw[(r+2)*12 + (f+2)]),
+          .o_nsse(w_nsse[(r+2-2)*12 + (f+2+1)]),  .i_nnnw(w_nsse[(r+2)*12 + (f+2)]),
+          .o_nssw(w_nssw[(r+2-2)*12 + (f+2-1)]),  .i_nnne(w_nssw[(r+2)*12 + (f+2)]),
+          .o_nwwn(w_nwwn[(r+2+1)*12 + (f+2-2)]),  .i_nees(w_nwwn[(r+2)*12 + (f+2)]),
+          .o_nwws(w_nwws[(r+2-1)*12 + (f+2-2)]),  .i_neen(w_nwws[(r+2)*12 + (f+2)]),
+          .o_neen(w_neen[(r+2+1)*12 + (f+2+2)]),  .i_nwws(w_neen[(r+2)*12 + (f+2)]),
+          .o_nees(w_nees[(r+2-1)*12 + (f+2+2)]),  .i_nwwn(w_nees[(r+2)*12 + (f+2)]),
 
           // 4-bit castelling rights for KQkq are input to all squares,
           // but only used by king squares e1 e8. If the rights are present,
@@ -280,36 +318,74 @@ module psudolegal_board(
     end
   endgenerate
 
+  // zero out unused move-in pins that have no squares feeding them
+  // these will get propagated into the squares and minimise the
+  // resulting logic.
   genvar nr,nf;
   generate
     for (nr=0; nr<12; nr=nr+1)
     begin: nrank // rows
       for (nf=0; nf<12; nf=nf+1)
       begin: nfile // columns
-        if (nr < 4 || nf < 3 || nf > 10) begin
+        if ((nr-2) < 2 || (nf-2) < 1) begin
           assign w_nnne[nr*12 + nf] = 0;
         end
-        if (nr < 4 || nf < 1 || nf > 8) begin
+        if ((nr-2) < 2 || (nf-2) > 6) begin
           assign w_nnnw[nr*12 + nf] = 0;
+        end
+        if ((nr-2) > 5 || (nf-2) < 1) begin
+          assign w_nsse[nr*12 + nf] = 0;
+        end
+        if ((nr-2) > 5 || (nf-2) > 6) begin
+          assign w_nssw[nr*12 + nf] = 0;
+        end
+        if ((nr-2) < 4 || (nf-2) < 1) begin
+          assign w_nwwn[nr*12 + nf] = 0;
+        end
+        if ((nr-2) < 4 || (nf-2) < 1) begin
+          assign w_nwws[nr*12 + nf] = 0;
+        end
+        if ((nr-2) < 4 || (nf-2) < 1) begin
+          assign w_neen[nr*12 + nf] = 0;
+        end
+        if ((nr-2) < 4 || (nf-2) < 1) begin
+          assign w_nees[nr*12 + nf] = 0;
         end
       end
     end
   endgenerate
 
 
-  reg [63:0] square_base = 0;
-
-  arbiter #(.WIDTH(64)) arbiter_target (
+  // all possible destinations of a piece output simultaniously on square_to
+  // this request arbiter iterates through them using the usual bitscan
+  // technique on carry chains
+  // square_to_arb is then a one-hot destination square, and iterates every
+  // cycle until the 65th bit, get priority, which is a 'no-more moves' bit
+  // to pop to the next piece stack.
+  reg [64:0] square_base = 1;
+  wire square_done;
+  arbiter #(.WIDTH(65)) arbiter_target (
     .base(square_base),
-    .req(square_to),
-    .grant(square_to_arb)
+    .req({{1'b1, square_to}}),
+    .grant({{square_done, square_to_arb}})
   );
+  always @(posedge clk) begin
+    if (start || square_done) begin
+      square_base <= 1;
+    end else if (|square_to_arb) begin
+      square_base <= square_to_arb << 1;
+    end
+  end
 
-  // connect serial board loading bus to the target square->target piece RAM
+  // convert one-hot square_to_arb to a 6-bit square rank/file
+  wire [5:0] square_to_rf;
+  onehot_to_bin #(.ONEHOT_WIDTH(64) ) oh2b_square_to (.onehot(square_to_arb), .bin(square_to_rf));
 
-  wire [3:0]  uci_moved_to_rank;
-  wire [3:0]  uci_moved_to_file;
   wire [3:0]  uci_piece_taken;
+  assign uci_move_to_r = square_to_rf[3 +: 3];
+  assign uci_move_to_f = square_to_rf[0 +: 3];
+  assign uci_move_promote = 0;
+  assign uci_piece_taken = 0;
 
   movegen_lookup_output movegen_lookup (
     .clk(clk),
@@ -317,18 +393,8 @@ module psudolegal_board(
     .in_pos_data(in_pos_data),
     .in_pos_sop(in_pos_sop),
 
-    .lookup_rankfile({uci_moved_to_rank, uci_moved_to_file}),
-    .out_piece(uci_piece_taken)
+    .lookup_rankfile({uci_move_to_r, uci_move_to_f}),
+    .out_piece()
   );
-
-  reg was_in_pos_data_eop = 0;
-  always @(posedge clk) begin
-    if (in_pos_valid) begin
-      was_in_pos_data_eop <= in_pos_eop;
-    end
-  end
-
-
-
 
 endmodule

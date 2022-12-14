@@ -6,7 +6,7 @@ module movegen_lookup_output(
   input logic [3:0]  in_pos_data = 0,
   input logic        in_pos_sop = 0,
 
-  input logic [7:0]  lookup_rankfile,
+  input logic [5:0]  lookup_rankfile,
   output [3:0]       out_piece
   );
 

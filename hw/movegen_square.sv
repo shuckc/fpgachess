@@ -64,8 +64,21 @@ module movegen_square #(
   // knight moves
   output        o_nnne,
   output        o_nnnw,
+  output        o_nsse,
+  output        o_nssw,
+  output        o_neen,
+  output        o_nees,
+  output        o_nwwn,
+  output        o_nwws,
+
   input logic   i_nsse,
   input logic   i_nssw,
+  input logic   i_nnne,
+  input logic   i_nnnw,
+  input logic   i_nwwn,
+  input logic   i_nwws,
+  input logic   i_neen,
+  input logic   i_nees,
 
   // castle
   output        o_castle_e,
@@ -144,6 +157,12 @@ module movegen_square #(
   wire n = emit_move & p_knight;
   assign o_nnne = n;
   assign o_nnnw = n;
+  assign o_nssw = n;
+  assign o_nsse = n;
+  assign o_nwwn = n;
+  assign o_nwws = n;
+  assign o_neen = n;
+  assign o_nees = n;
 
   // castling
   // we propagate castle signals right out to the edge of the board
@@ -182,7 +201,7 @@ module movegen_square #(
   assign pawn_take = (i_pne | i_pse | i_psw | i_pnw) & sq_oppos;
   assign king_move = (i_kn | i_kne | i_ke | i_kse | i_ks | i_ksw | i_kw | i_knw) & (sq_empty | sq_oppos);
   assign slide_move = (i_ss | i_sn | i_sw | i_se | i_ssw | i_snw | i_sne | i_sse) & (sq_empty | sq_oppos);
-  assign knight_move = (i_nsse | i_nssw) & (sq_empty | sq_oppos);
+  assign knight_move = (i_nsse | i_nssw | i_nnne | i_nnnw) & (sq_empty | sq_oppos);
 
   //assign target_square = pawn_move | pawn_take | king_move | slide_move | castle_move;
   assign target_square = pawn_move || knight_move; // | pawn_take | king_move | slide_move | castle_move;

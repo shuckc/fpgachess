@@ -72,7 +72,7 @@ async def test_psudo_legal_moves(dut):
     await RisingEdge(dut.clk)  # wait for falling edge/"negedge"
 
     board = await fd.send(
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", idler=IdleToggler()
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     )
     # assert pos within board squares to ensure fen serial load ordering correct
     assert dut.rank[0].file[0].movegen_square.pos.value == BINARY_PIECE['R'] # a1 = R
@@ -90,9 +90,23 @@ async def test_psudo_legal_moves(dut):
     assert dut.item[1].movegen_piece_white.out_data.value == encodeItem('N', 'g1')
     assert dut.item[15].movegen_piece_white.out_data.value == encodeItem('p', 'a2')
 
-
     await start_strobe.strobe()
     bs = await rcv.recv()
 
+    await Timer(5, units="ns")
+
     plm = list(board.pseudo_legal_moves)
     assert(len(bs) == len(plm))
+
+
+    # flip the side to play and check black moves
+    board = await fd.send(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
+    )
+    await start_strobe.strobe()
+    bs = await rcv.recv()
+    await Timer(5, units="ns")
+
+    plm = list(board.pseudo_legal_moves)
+    assert(len(bs) == len(plm))
+
