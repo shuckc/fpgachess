@@ -149,3 +149,26 @@ async def test_psudo_legal_moves(dut):
     assert_moves_equal(bs, board)
 
 
+@cocotb.test()
+async def test_kiwipete_moves(dut):
+    # Kiwipete by Peter McKenzie, a well-known test
+    # position for takes/check taken from
+    # https://www.chessprogramming.org/Perft_Results
+
+    await cocotb.start(Clock(dut.clk, 1000).start())
+    fd = BinaryBoardDriver(dut.clk, dut.in_pos_valid, dut.in_pos_data, dut.in_pos_sop, dut.in_pos_eop, None, None, dut.in_wtp, dut.in_castle, dut.in_ep)
+    rcv = StreamValueReceiver(
+        dut.clk, dut.o_uci_valid, dut.o_uci_data, dut.o_uci_sop, dut.o_uci_eop
+    )
+    start_strobe = StrobeDriver(dut.clk, dut.start)
+    await Timer(5, units="ns")
+    await RisingEdge(dut.clk)
+
+    board = await fd.send(
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+    )
+    await start_strobe.strobe()
+    bs = await rcv.recv()
+    await Timer(5, units="ns")
+
+    assert_moves_equal(bs, board)
