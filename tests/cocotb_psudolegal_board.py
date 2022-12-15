@@ -8,7 +8,7 @@ from cocotb.queue import Queue
 from cocotb.binary import BinaryValue
 
 from drivers import StreamDriver, StreamReceiver, IdleToggler, StrobeDriver
-from cocotb_fen_decode import get_binary_board, BINARY_PIECE
+from cocotb_fen_decode import get_binary_board, BINARY_PIECE, TEXT_PIECE
 
 class BinaryBoardDriver(StreamDriver):
     def __init__(self, clock, valid, data, sop, eop, hmcount, fmcount, wtp, castle, ep):
@@ -47,6 +47,7 @@ class BinaryBoardDriver(StreamDriver):
 #  9 A B C D E   +8 white (upper case)
 class StreamValueReceiver(StreamReceiver):
     def extract(self, value):
+        value.big_endian = False
         return value
     def compact(self, results):
         return results
@@ -58,6 +59,47 @@ def encodeItem(piece, square):
     file = "abcdefgh".index(square[0])
     rank = "12345678".index(square[1])
     return (1 << 9) + (b << 6) + (rank << 3) + file
+
+def encode_pseudo_legal_moves(board):
+    # prom_encoded = {None: 0, chess.PieceType.QUEEN: 2, chess.PieceType.ROOK: 3, chess.PieceType.BISHOP: 4, chess.PieceType.KNIGHT: 5}
+    moves = set()
+    for m in board.pseudo_legal_moves:
+        uci = m.uci()
+        p = board.piece_at(m.from_square)
+        if p is not None and p.piece_type is not chess.PAWN:
+            uci = f"{chess.PIECE_SYMBOLS[p.piece_type]}{uci}"
+        # p = prom_encoded[m.promotion]
+        moves.add(uci)
+    return moves
+
+def encode_binary_moves(binary_moves):
+    # adding the piece to the usual uci code
+    # format is "Qa3a4" or "a3a4" for a non-promoting pawn move.
+    # add "x[PQNB]" etc for taking
+    # castelling specified as the king move
+    moves = set()
+    files = "abcdefgh"
+    ranks = "12345678"
+    for m in binary_moves:
+        # bit order: rank,file
+        p = TEXT_PIECE[m[17:15].integer]
+        uci = f"{files[m[14:12].integer]}{ranks[m[11:9].integer]}{files[m[5:3].integer]}{ranks[m[2:0].integer]}"
+        if p != "p":
+            uci = f"{p}{uci}"
+        print(uci)
+        moves.add(uci)
+    return moves
+
+def assert_moves_equal(binary_stream, board):
+    bin_moves = encode_binary_moves(binary_stream)
+    board_moves = encode_pseudo_legal_moves(board)
+    missing = board_moves - bin_moves
+    extra = bin_moves - board_moves
+    if missing or extra:
+        print(bin_moves)
+        print(board_moves)
+        raise Exception(f"mismatch moves: missing {missing}, extra {extra}")
+
 
 @cocotb.test()
 async def test_psudo_legal_moves(dut):
@@ -94,10 +136,7 @@ async def test_psudo_legal_moves(dut):
     bs = await rcv.recv()
 
     await Timer(5, units="ns")
-
-    plm = list(board.pseudo_legal_moves)
-    assert(len(bs) == len(plm))
-
+    assert_moves_equal(bs, board)
 
     # flip the side to play and check black moves
     board = await fd.send(
@@ -107,6 +146,6 @@ async def test_psudo_legal_moves(dut):
     bs = await rcv.recv()
     await Timer(5, units="ns")
 
-    plm = list(board.pseudo_legal_moves)
-    assert(len(bs) == len(plm))
+    assert_moves_equal(bs, board)
+
 

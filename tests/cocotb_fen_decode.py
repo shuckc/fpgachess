@@ -23,9 +23,8 @@ class FENDriver(StreamDriver):
         await super().send(bs, **kwargs)
         return board
 
-
-BINARY_PIECE = dict([(c,i) for i,c in enumerate(' kqrbnp  KQRBNP') if c != ' '])
-
+TEXT_PIECE = " kqrbnp  KQRBNP"
+BINARY_PIECE = dict([(c,i) for i,c in enumerate(TEXT_PIECE) if c != ' '])
 
 def get_binary_board(board):
     #  K Q R B N P

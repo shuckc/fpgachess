@@ -35,7 +35,7 @@ module psudolegal_board(
   wire [2:0] uci_move_to_r;
   wire [2:0] uci_move_to_f;
   wire [19:0] o_uci_data_w;
-  assign o_uci_data_w = {uci_move_promote, uci_move_piece, uci_move_from_r, uci_move_from_f, uci_move_takes, uci_move_to_r, uci_move_to_f};
+  assign o_uci_data_w = {uci_move_promote, uci_move_piece, uci_move_from_f, uci_move_from_r, uci_move_takes, uci_move_to_f, uci_move_to_r};
   reg r_load_pieces_d = 0;
 
   // the signal to know if this was the *last* valid move is very long
@@ -381,11 +381,10 @@ module psudolegal_board(
   wire [5:0] square_to_rf;
   onehot_to_bin #(.ONEHOT_WIDTH(64) ) oh2b_square_to (.onehot(square_to_arb), .bin(square_to_rf));
 
-  wire [3:0]  uci_piece_taken;
   assign uci_move_to_r = square_to_rf[3 +: 3];
   assign uci_move_to_f = square_to_rf[0 +: 3];
   assign uci_move_promote = 0;
-  assign uci_piece_taken = 0;
+  assign uci_move_takes = 0;
 
   movegen_lookup_output movegen_lookup (
     .clk(clk),
