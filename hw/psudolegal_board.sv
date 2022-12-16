@@ -361,16 +361,16 @@ module psudolegal_board(
         if ((nr-2) > 5 || (nf-2) > 6) begin
           assign w_nssw[nr*12 + nf] = 0;
         end
-        if ((nr-2) < 4 || (nf-2) < 1) begin
+        if ((nr-2) < 1 || (nf-2) > 5) begin
           assign w_nwwn[nr*12 + nf] = 0;
         end
-        if ((nr-2) < 4 || (nf-2) < 1) begin
+        if ((nr-2) > 6 || (nf-2) > 5) begin
           assign w_nwws[nr*12 + nf] = 0;
         end
-        if ((nr-2) < 4 || (nf-2) < 1) begin
+        if ((nr-2) < 1 || (nf-2) < 2) begin
           assign w_neen[nr*12 + nf] = 0;
         end
-        if ((nr-2) < 4 || (nf-2) < 1) begin
+        if ((nr-2) > 6 || (nf-2) < 2) begin
           assign w_nees[nr*12 + nf] = 0;
         end
       end
