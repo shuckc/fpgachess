@@ -13,11 +13,9 @@ module movegen_square #(
 
   // pawn moves
   output        o_pn,
-  output        o_pne,
-  output        o_pse,
   output        o_ps,
-  output        o_psw,
-  output        o_pnw,
+  output        o_pne_nw,
+  output        o_pse_sw,
   input logic   i_pn,
   input logic   i_pne,
   input logic   i_pse,
@@ -123,12 +121,10 @@ module movegen_square #(
   // pawn moves out (direction depends on colour!)
   wire pn = (emit_move & pos == 4'hE);
   assign o_pn  = pn || (RANK == 3 & i_ps & sq_empty); // double-move
-  assign o_pne = pn;
-  assign o_pnw = pn;
+  assign o_pne_nw = pn;
   wire ps = (emit_move & pos == 4'h6);
   assign o_ps  = ps || (RANK == 6 & i_pn & sq_empty); // double-move
-  assign o_pse = ps;
-  assign o_psw = ps;
+  assign o_pse_sw = ps;
 
   // king moves out
   wire k = emit_move & p_king;
@@ -204,6 +200,6 @@ module movegen_square #(
   assign knight_move = (i_nsse | i_nssw | i_nnne | i_nnnw) & (sq_empty | sq_oppos);
 
   //assign target_square = pawn_move | pawn_take | king_move | slide_move | castle_move;
-  assign target_square = pawn_move || knight_move; // | pawn_take | king_move | slide_move | castle_move;
+  assign target_square = pawn_move || pawn_take || knight_move; // | king_move | slide_move | castle_move;
 
 endmodule

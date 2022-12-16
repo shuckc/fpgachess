@@ -209,7 +209,13 @@ module psudolegal_board(
   assign pos_interconnect[3:0] = in_pos_data;
 
   // board move interconnect, each following the name of the driving pins
-  wire [9*8-1:0] w_pn, w_ps;
+
+  // pawn n/s boards are 10x10, since pn drives one above, ps 1 below, plus diagonals
+  // up/down signals also fire for double moves, however the diagonal captures from the
+  // intermediate cell are not valid in that case, so we need extra wiring to disambiguate
+  // a forwarded move o_pn->i_ps -> o_pn -> i_ps (via w_pn) from
+  // non-forwarding diagonal takes o_pne_nw -> i_pse (via w_pne_nw).
+  wire [10*10-1:0] w_pn, w_ps, w_pne_nw, w_pse_sw;
 
   // for knight wiring center 8x8 board within a 12x12, ie. with 2 padding all round
   wire [12*12-1:0] w_nnne, w_nnnw, w_nsse, w_nssw, w_neen, w_nees, w_nwwn, w_nwws;
@@ -240,13 +246,7 @@ module psudolegal_board(
           // pawn moves signals are not shared with king because of
           // initial double moves, ep logic, and diagonals being
           //  valid only if taking.
-          // from      to
-          .o_pn(w_pn[(r+1)*8 + f]),  .i_ps(w_pn[r*8 + f]),
-          .o_ps(w_ps[r*8 + f]),      .i_pn(w_ps[(r+1)*8 + f]),
-          .o_pne(),   .i_psw(),
-          .o_pnw(),   .i_pse(),
-          .o_pse(),   .i_pnw(),
-          .o_psw(),   .i_pne(),
+          //
           // initial double pawn moves also use pn/ps with logic in
           // the board for files 3 and 6 to forward for an extra square.
           // going north:
@@ -255,11 +255,17 @@ module psudolegal_board(
           // going south,
           //  file 7 send o_ps, file 6 recieves i_pn,
           //  if unoccupied, file 6 sends o_ps, file 5 recieves i_pn
-
-          // a sqaure recieving the pawn diagonal move signals emits if
+          //
+          // a square recieving the pawn diagonal move signals emits if
           // it is occupied and can be taken, OR is unoccupied but the
           // ep flags indicate a pawn double move took place over our
           // square.
+          .o_pn(     w_pn[    (r+1)*10 + f+1]),  .i_ps( w_pn[    (r+1-1)*10 + f+1+0]),
+          .o_pne_nw( w_pne_nw[(r+1)*10 + f+1]),  .i_psw(w_pne_nw[(r+1-1)*10 + f+1+1]),
+                                                 .i_pse(w_pne_nw[(r+1-1)*10 + f+1-1]),
+          .o_ps(     w_ps[    (r+1)*10 + f+1]),  .i_pn( w_ps[    (r+1+1)*10 + f+1+0]),
+          .o_pse_sw( w_pse_sw[(r+1)*10 + f+1]),  .i_pnw(w_pse_sw[(r+1+1)*10 + f+1+1]),
+                                                 .i_pne(w_pse_sw[(r+1+1)*10 + f+1-1]),
 
           // king moves, clockwise from N
           .o_kn(),    .i_ks(),
@@ -309,18 +315,34 @@ module psudolegal_board(
           // white to play
           .wtp(in_wtp)
         );
-        // assign square_from[r*8+f] = movegen_square;
+
       end
 
-      assign w_pn[0 + r] = 0; // no incoming N
-      assign w_ps[64 + r] = 0; // no incoming S
-
+      assign w_pn[0*10 + r+1] = 0; // no incoming N
+      assign w_ps[9*10 + r+1] = 0; // no incoming S
     end
   endgenerate
 
-  // zero out unused move-in pins that have no squares feeding them
+  // zero out unused move-in pins that have no squares attached
   // these will get propagated into the squares and minimise the
   // resulting logic.
+
+  // pawns
+  genvar pr,pf;
+  generate
+    for (pr=0; pr<10; pr=pr+1)
+    begin: prank // rows
+      for (pf=0; pf<10; pf=pf+1)
+      begin: pfile // columns
+        if ((pr-1) < 0 || (pr-1) > 7 || (pf-1) < 0 || (pf-1) > 7) begin
+          assign w_pne_nw[pr*10 + pf] = 0;
+          assign w_pse_sw[pr*10 + pf] = 0;
+        end
+      end
+    end
+  endgenerate
+
+  // knights
   genvar nr,nf;
   generate
     for (nr=0; nr<12; nr=nr+1)

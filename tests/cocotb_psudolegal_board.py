@@ -86,7 +86,6 @@ def encode_binary_moves(binary_moves):
         uci = f"{files[m[14:12].integer]}{ranks[m[11:9].integer]}{files[m[5:3].integer]}{ranks[m[2:0].integer]}"
         if p != "p":
             uci = f"{p}{uci}"
-        print(uci)
         moves.add(uci)
     return moves
 
