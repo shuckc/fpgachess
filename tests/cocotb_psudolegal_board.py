@@ -53,12 +53,15 @@ class StreamValueReceiver(StreamReceiver):
         return results
 
 
-def encodeItem(piece, square):
-    # we strip the player bit in this encoding, as that is used for bank select
-    b = BINARY_PIECE[piece] & 7
-    file = "abcdefgh".index(square[0])
-    rank = "12345678".index(square[1])
-    return (1 << 9) + (b << 6) + (rank << 3) + file
+def decodeItem(value):
+    v = value.out_data.value.integer
+    file = "abcdefgh"[v & 7]
+    rank = "12345678"[(v >> 3) & 7]
+    # no player bit in this encoding, as that is used for bank select, returns black piece chars
+    p = TEXT_PIECE[(v >> 6) & 7]
+    if (v >> 9) & 1 == 0:
+        return None
+    return (p, f"{file}{rank}")
 
 def encode_pseudo_legal_moves(board):
     # prom_encoded = {None: 0, chess.PieceType.QUEEN: 2, chess.PieceType.ROOK: 3, chess.PieceType.BISHOP: 4, chess.PieceType.KNIGHT: 5}
@@ -122,14 +125,23 @@ async def test_psudo_legal_moves(dut):
     assert dut.rank[7].file[0].movegen_square.pos.value == BINARY_PIECE['r'] # a8 = r
 
     # assert black move stack (last piece is top)
-    assert dut.item[0].movegen_piece_black.out_data.value == encodeItem('p', 'h7')
-    assert dut.item[1].movegen_piece_black.out_data.value == encodeItem('p', 'g7')
-    assert dut.item[15].movegen_piece_black.out_data.value == encodeItem('r', 'a8')
+    assert decodeItem(dut.item[0].movegen_piece_black) == ('p', 'h7')
+    assert decodeItem(dut.item[1].movegen_piece_black) == ('p', 'g7')
+    assert decodeItem(dut.item[2].movegen_piece_black) == ('p', 'f7')
+    assert decodeItem(dut.item[3].movegen_piece_black) == ('p', 'e7')
+    assert decodeItem(dut.item[11].movegen_piece_black) == ('k', 'e8')
+    assert decodeItem(dut.item[12].movegen_piece_black) == ('q', 'd8')
+    assert decodeItem(dut.item[13].movegen_piece_black) == ('b', 'c8')
+    assert decodeItem(dut.item[14].movegen_piece_black) == ('n', 'b8')
+    assert decodeItem(dut.item[15].movegen_piece_black) == ('r', 'a8')
 
     # white move stack (last piece is top)
-    assert dut.item[0].movegen_piece_white.out_data.value == encodeItem('R', 'h1')
-    assert dut.item[1].movegen_piece_white.out_data.value == encodeItem('N', 'g1')
-    assert dut.item[15].movegen_piece_white.out_data.value == encodeItem('p', 'a2')
+    assert decodeItem(dut.item[0].movegen_piece_white) == ('r', 'h1')
+    assert decodeItem(dut.item[1].movegen_piece_white) == ('n', 'g1')
+    assert decodeItem(dut.item[2].movegen_piece_white) == ('b', 'f1')
+    assert decodeItem(dut.item[3].movegen_piece_white) == ('k', 'e1')
+    assert decodeItem(dut.item[4].movegen_piece_white) == ('q', 'd1')
+    assert decodeItem(dut.item[15].movegen_piece_white) == ('p', 'a2')
 
     await start_strobe.strobe()
     bs = await rcv.recv()
