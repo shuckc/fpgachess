@@ -214,6 +214,7 @@ module psudolegal_board(
   // a forwarded move o_pn->i_ps -> o_pn -> i_ps (via w_pn) from
   // non-forwarding diagonal takes o_pne_nw -> i_pse (via w_pne_nw).
   wire [10*10-1:0] w_pn, w_ps, w_pne_nw, w_pse_sw;
+  wire [10*10-1:0] w_sn, w_sne, w_se, w_sse, w_ss, w_ssw, w_sw, w_snw;
 
   // for knight wiring center 8x8 board within a 12x12, ie. with 2 padding all round
   wire [12*12-1:0] w_nnne, w_nnnw, w_nsse, w_nssw, w_neen, w_nees, w_nwwn, w_nwws;
@@ -265,25 +266,15 @@ module psudolegal_board(
           .o_pse_sw( w_pse_sw[(r+1)*10 + f+1]),  .i_pnw(w_pse_sw[(r+1+1)*10 + f+1+1]),
                                                  .i_pne(w_pse_sw[(r+1+1)*10 + f+1-1]),
 
-          // king moves, clockwise from N
-          .o_kn(),    .i_ks(),
-          .o_kne(),   .i_ksw(),
-          .o_ke(),    .i_kw(),
-          .o_kse(),   .i_knw(),
-          .o_ks(),    .i_kn(),
-          .o_ksw(),   .i_kne(),
-          .o_kw(),    .i_ke(),
-          .o_knw(),   .i_kse(),
-
           // slide out rays (used by queen, rook, bishop), clockwise from N
-          .o_sn(),    .i_ss(),
-          .o_sne(),   .i_ssw(),
-          .o_se(),    .i_sw(),
-          .o_sse(),   .i_snw(),
-          .o_ss(),    .i_sn(),
-          .o_ssw(),   .i_sne(),
-          .o_sw(),    .i_se(),
-          .o_snw(),   .i_sse(),
+          .o_sn(  w_sn[ (r+1)*10 + f+1]),    .i_ss(  w_sn[ (r+1-1)*10 + f+1+0]),
+          .o_sne( w_sne[(r+1)*10 + f+1]),    .i_ssw( w_sne[(r+1-1)*10 + f+1-1]),
+          .o_se(  w_se[ (r+1)*10 + f+1]),    .i_sw(  w_se[ (r+1-0)*10 + f+1-1]),
+          .o_sse( w_sse[(r+1)*10 + f+1]),    .i_snw( w_sse[(r+1+1)*10 + f+1-1]),
+          .o_ss(  w_ss[ (r+1)*10 + f+1]),    .i_sn(  w_ss[ (r+1+1)*10 + f+1+0]),
+          .o_ssw( w_ssw[(r+1)*10 + f+1]),    .i_sne( w_ssw[(r+1+1)*10 + f+1+1]),
+          .o_sw(  w_sw[ (r+1)*10 + f+1]),    .i_se(  w_sw[ (r+1+0)*10 + f+1+1]),
+          .o_snw( w_snw[(r+1)*10 + f+1]),    .i_sse( w_snw[(r+1-1)*10 + f+1+1]),
 
           // knight L-moves, these skip the intermediate squares
           // r+2, f+2 translates us to the square on the 12x12 knight board
@@ -295,6 +286,17 @@ module psudolegal_board(
           .o_nwws(w_nwws[(r+2-1)*12 + (f+2-2)]),  .i_neen(w_nwws[(r+2)*12 + (f+2)]),
           .o_neen(w_neen[(r+2+1)*12 + (f+2+2)]),  .i_nwws(w_neen[(r+2)*12 + (f+2)]),
           .o_nees(w_nees[(r+2-1)*12 + (f+2+2)]),  .i_nwwn(w_nees[(r+2)*12 + (f+2)]),
+
+          // king moves, clockwise from N
+          // special as cannot move into a checked square
+          .o_kn(),    .i_ks(),
+          .o_kne(),   .i_ksw(),
+          .o_ke(),    .i_kw(),
+          .o_kse(),   .i_knw(),
+          .o_ks(),    .i_kn(),
+          .o_ksw(),   .i_kne(),
+          .o_kw(),    .i_ke(),
+          .o_knw(),   .i_kse(),
 
           // 4-bit castelling rights for KQkq are input to all squares,
           // but only used by king squares e1 e8. If the rights are present,
@@ -336,6 +338,32 @@ module psudolegal_board(
           assign w_pne_nw[pr*10 + pf] = 0;
           assign w_pse_sw[pr*10 + pf] = 0;
         end
+
+        if ((pr-1) > 7) begin
+          assign w_ss[pr*10 + pf] = 0;
+        end
+        if ((pr-1) < 0) begin
+          assign w_sn[pr*10 + pf] = 0;
+        end
+        if ((pf-1) > 7) begin
+          assign w_sw[pr*10 + pf] = 0;
+        end
+        if ((pf-1) < 0) begin
+          assign w_se[pr*10 + pf] = 0;
+        end
+        if ((pr-1) > 7 | (pf-1) > 7) begin
+          assign w_ssw[pr*10 + pf] = 0;
+        end
+        if ((pr-1) > 7 | (pf-1) < 0) begin
+          assign w_sse[pr*10 + pf] = 0;
+        end
+        if ((pr-1) < 0 | (pf-1) < 0) begin
+          assign w_sne[pr*10 + pf] = 0;
+        end
+        if ((pr-1) < 0 | (pf-1) > 7) begin
+          assign w_snw[pr*10 + pf] = 0;
+        end
+
       end
     end
   endgenerate
