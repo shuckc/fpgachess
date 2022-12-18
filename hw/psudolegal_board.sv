@@ -215,6 +215,7 @@ module psudolegal_board(
   // non-forwarding diagonal takes o_pne_nw -> i_pse (via w_pne_nw).
   wire [10*10-1:0] w_pn, w_ps, w_pne_nw, w_pse_sw;
   wire [10*10-1:0] w_sn, w_sne, w_se, w_sse, w_ss, w_ssw, w_sw, w_snw;
+  wire [10*10-1:0] w_kn, w_kne, w_ke, w_kse, w_ks, w_ksw, w_kw, w_knw;
 
   // for knight wiring center 8x8 board within a 12x12, ie. with 2 padding all round
   wire [12*12-1:0] w_nnne, w_nnnw, w_nsse, w_nssw, w_neen, w_nees, w_nwwn, w_nwws;
@@ -288,15 +289,15 @@ module psudolegal_board(
           .o_nees(w_nees[(r+2-1)*12 + (f+2+2)]),  .i_nwwn(w_nees[(r+2)*12 + (f+2)]),
 
           // king moves, clockwise from N
-          // special as cannot move into a checked square
-          .o_kn(),    .i_ks(),
-          .o_kne(),   .i_ksw(),
-          .o_ke(),    .i_kw(),
-          .o_kse(),   .i_knw(),
-          .o_ks(),    .i_kn(),
-          .o_ksw(),   .i_kne(),
-          .o_kw(),    .i_ke(),
-          .o_knw(),   .i_kse(),
+          // special as cannot move into a checked square, do not slide out
+          .o_kn(  w_kn[ (r+1)*10 + f+1]),    .i_ks(  w_kn[ (r+1-1)*10 + f+1+0]),
+          .o_kne( w_kne[(r+1)*10 + f+1]),    .i_ksw( w_kne[(r+1-1)*10 + f+1-1]),
+          .o_ke(  w_ke[ (r+1)*10 + f+1]),    .i_kw(  w_ke[ (r+1-0)*10 + f+1-1]),
+          .o_kse( w_kse[(r+1)*10 + f+1]),    .i_knw( w_kse[(r+1+1)*10 + f+1-1]),
+          .o_ks(  w_ks[ (r+1)*10 + f+1]),    .i_kn(  w_ks[ (r+1+1)*10 + f+1+0]),
+          .o_ksw( w_ksw[(r+1)*10 + f+1]),    .i_kne( w_ksw[(r+1+1)*10 + f+1+1]),
+          .o_kw(  w_kw[ (r+1)*10 + f+1]),    .i_ke(  w_kw[ (r+1+0)*10 + f+1+1]),
+          .o_knw( w_knw[(r+1)*10 + f+1]),    .i_kse( w_knw[(r+1-1)*10 + f+1+1]),
 
           // 4-bit castelling rights for KQkq are input to all squares,
           // but only used by king squares e1 e8. If the rights are present,
@@ -327,7 +328,7 @@ module psudolegal_board(
   // these will get propagated into the squares and minimise the
   // resulting logic.
 
-  // pawns
+  // p pawns, s sliders, k king
   genvar pr,pf;
   generate
     for (pr=0; pr<10; pr=pr+1)
@@ -341,29 +342,36 @@ module psudolegal_board(
 
         if ((pr-1) > 7) begin
           assign w_ss[pr*10 + pf] = 0;
+          assign w_ks[pr*10 + pf] = 0;
         end
         if ((pr-1) < 0) begin
           assign w_sn[pr*10 + pf] = 0;
+          assign w_kn[pr*10 + pf] = 0;
         end
         if ((pf-1) > 7) begin
           assign w_sw[pr*10 + pf] = 0;
+          assign w_kw[pr*10 + pf] = 0;
         end
         if ((pf-1) < 0) begin
           assign w_se[pr*10 + pf] = 0;
+          assign w_ke[pr*10 + pf] = 0;
         end
         if ((pr-1) > 7 | (pf-1) > 7) begin
           assign w_ssw[pr*10 + pf] = 0;
+          assign w_ksw[pr*10 + pf] = 0;
         end
         if ((pr-1) > 7 | (pf-1) < 0) begin
           assign w_sse[pr*10 + pf] = 0;
+          assign w_kse[pr*10 + pf] = 0;
         end
         if ((pr-1) < 0 | (pf-1) < 0) begin
           assign w_sne[pr*10 + pf] = 0;
+          assign w_kne[pr*10 + pf] = 0;
         end
         if ((pr-1) < 0 | (pf-1) > 7) begin
           assign w_snw[pr*10 + pf] = 0;
+          assign w_knw[pr*10 + pf] = 0;
         end
-
       end
     end
   endgenerate

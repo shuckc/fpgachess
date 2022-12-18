@@ -198,7 +198,7 @@ module movegen_square #(
   assign king_move = (i_kn | i_kne | i_ke | i_kse | i_ks | i_ksw | i_kw | i_knw) & (sq_empty | sq_oppos);
   assign slide_move = (i_ss | i_sn | i_sw | i_se | i_ssw | i_snw | i_sne | i_sse) & (sq_empty | sq_oppos);
   assign knight_move = (i_nsse | i_nssw | i_nnne | i_nnnw | i_neen | i_nees | i_nwwn | i_nwws) & (sq_empty | sq_oppos);
-  assign target_square = pawn_move || pawn_take || knight_move || slide_move;
-  // | king_move | castle_move;
+  assign target_square = pawn_move || pawn_take || knight_move || slide_move || king_move;
+  // castle_move;
 
 endmodule
