@@ -25,7 +25,7 @@ module movegen_rankfile (
   // combinatorial output probably OK - I don't want to retime the in_pos bus
   // for this calculation, since fan out is direct into
   // registers anyway
-  wire [5:0] rankfile_bin = r_rankfile_bin + (in_pos_valid & !in_pos_sop);
+  wire [5:0] rankfile_bin = in_pos_sop ? 6'b0 : r_rankfile_bin + in_pos_valid;
 
   // the file order is conventional, so we can pass through those bits
   // ranks need to be reversed, ie descending from 7

@@ -157,17 +157,15 @@ module psudolegal_board(
       );
     end
   endgenerate
-  assign uci_move_from_f = stack_interconnect_to_play_o[0 +: 3];
-  assign uci_move_from_r = stack_interconnect_to_play_o[3 +: 3];
-  assign uci_move_piece = stack_interconnect_to_play_o[6 +: 3];
+
+  wire [8:0] stack_piece_to_play = stack_interconnect_to_play_o[0 +: 9];
+  assign uci_move_from_f = stack_piece_to_play[0 +: 3];
+  assign uci_move_from_r = stack_piece_to_play[3 +: 3];
+  assign uci_move_piece =  stack_piece_to_play[6 +: 3];
 
   // we jump to the next piece if there are no more destinations
   // for this piece
   assign next_piece = !(|square_to_arb);
-  //always @(posedge clk) begin
-  //  o_uci_data <= o_uci_data_w;
-  //end
-
 
   // instantiate the square modules.
   // in_pos_data is a serial load that shifts through each square in turn,
