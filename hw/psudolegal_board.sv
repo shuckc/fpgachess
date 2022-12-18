@@ -165,7 +165,7 @@ module psudolegal_board(
 
   // we jump to the next piece if there are no more destinations
   // for this piece
-  assign next_piece = !(|square_to_arb);
+  assign next_piece = square_done;
 
   // instantiate the square modules.
   // in_pos_data is a serial load that shifts through each square in turn,
@@ -392,7 +392,7 @@ module psudolegal_board(
   always @(posedge clk) begin
     if (start || square_done) begin
       square_base <= 1;
-    end else if (|square_to_arb) begin
+    end else begin
       square_base <= square_to_arb << 1;
     end
   end
