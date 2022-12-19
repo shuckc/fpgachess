@@ -166,24 +166,24 @@ module movegen_square #(
   wire castle_move;
   generate
     if (RANK == 1 && FILE == 5) begin // e1_king square
-      assign o_castle_w = i_castle_rights[0]; // TODO check index into castle
-      assign o_castle_e = i_castle_rights[1];
+      assign o_castle_w = i_castle_rights[2] & emit_move; // white queenside
+      assign o_castle_e = i_castle_rights[3] & emit_move; // white kingside
       assign castle_move = 0;
     end
     else if (RANK == 8 && FILE == 5) begin // e8 king square
-      assign o_castle_w = i_castle_rights[2];
-      assign o_castle_e = i_castle_rights[3];
+      assign o_castle_w = i_castle_rights[0] & emit_move; // black queenside
+      assign o_castle_e = i_castle_rights[1] & emit_move; // black kingside
       assign castle_move = 0;
     end
     else if (RANK == 1) begin // 1_rank
       assign o_castle_w = sq_empty && i_castle_e;
       assign o_castle_e = sq_empty && i_castle_w;
-      assign castle_move = (FILE == 7 && i_castle_w) | (FILE == 2 && i_castle_e);
+      assign castle_move = (FILE == 7 && i_castle_w) | (FILE == 3 && i_castle_e);
     end
     else if (RANK == 8) begin // 8_rank
       assign o_castle_w = sq_empty && i_castle_e;
       assign o_castle_e = sq_empty && i_castle_w;
-      assign castle_move = (FILE == 7 && i_castle_w) | (FILE == 2 && i_castle_e);
+      assign castle_move = (FILE == 7 && i_castle_w) | (FILE == 3 && i_castle_e);
     end
     else begin : not_king_row
       assign o_castle_e = 0;
@@ -198,7 +198,6 @@ module movegen_square #(
   assign king_move = (i_kn | i_kne | i_ke | i_kse | i_ks | i_ksw | i_kw | i_knw) & (sq_empty | sq_oppos);
   assign slide_move = (i_ss | i_sn | i_sw | i_se | i_ssw | i_snw | i_sne | i_sse) & (sq_empty | sq_oppos);
   assign knight_move = (i_nsse | i_nssw | i_nnne | i_nnnw | i_neen | i_nees | i_nwwn | i_nwws) & (sq_empty | sq_oppos);
-  assign target_square = pawn_move || pawn_take || knight_move || slide_move || king_move;
-  // castle_move;
+  assign target_square = pawn_move || pawn_take || knight_move || slide_move || king_move || castle_move;
 
 endmodule

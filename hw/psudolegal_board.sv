@@ -216,6 +216,7 @@ module psudolegal_board(
   wire [10*10-1:0] w_pn, w_ps, w_pne_nw, w_pse_sw;
   wire [10*10-1:0] w_sn, w_sne, w_se, w_sse, w_ss, w_ssw, w_sw, w_snw;
   wire [10*10-1:0] w_kn, w_kne, w_ke, w_kse, w_ks, w_ksw, w_kw, w_knw;
+  wire [10*10-1:0] w_castle_e, w_castle_w;
 
   // for knight wiring center 8x8 board within a 12x12, ie. with 2 padding all round
   wire [12*12-1:0] w_nnne, w_nnnw, w_nsse, w_nssw, w_neen, w_nees, w_nwwn, w_nwws;
@@ -310,8 +311,8 @@ module psudolegal_board(
           // place or the casteling rights would be lost, and there are no
           // intermediate squares between them and the destination square.
           .i_castle_rights(in_castle),
-          .o_castle_e(),     .i_castle_w(),
-          .o_castle_w(),     .i_castle_e(),
+          .o_castle_e( w_castle_e[(r+1)*10 + f+1]), .i_castle_w(w_castle_e[(r+1-0)*10 + f+1-1]),
+          .o_castle_w( w_castle_w[(r+1)*10 + f+1]), .i_castle_e(w_castle_w[(r+1+0)*10 + f+1+1]),
 
           // white to play
           .wtp(in_wtp)
@@ -351,10 +352,12 @@ module psudolegal_board(
         if ((pf-1) > 7) begin
           assign w_sw[pr*10 + pf] = 0;
           assign w_kw[pr*10 + pf] = 0;
+          assign w_castle_w[pr*10 + pf] = 0;
         end
         if ((pf-1) < 0) begin
           assign w_se[pr*10 + pf] = 0;
           assign w_ke[pr*10 + pf] = 0;
+          assign w_castle_e[pr*10 + pf] = 0;
         end
         if ((pr-1) > 7 | (pf-1) > 7) begin
           assign w_ssw[pr*10 + pf] = 0;

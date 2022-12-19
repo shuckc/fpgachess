@@ -10,6 +10,13 @@ from cocotb.binary import BinaryValue
 from drivers import StreamDriver, StreamReceiver, IdleToggler, StrobeDriver
 from cocotb_fen_decode import get_binary_board, BINARY_PIECE, TEXT_PIECE
 
+def encode_casteling_bits(board):
+    v = 0 | board.has_kingside_castling_rights(chess.WHITE) << 3
+    v = v | board.has_queenside_castling_rights(chess.WHITE) << 2
+    v = v | board.has_kingside_castling_rights(chess.BLACK) << 1
+    v = v | board.has_queenside_castling_rights(chess.BLACK) << 0
+    return v
+
 class BinaryBoardDriver(StreamDriver):
     def __init__(self, clock, valid, data, sop, eop, hmcount, fmcount, wtp, castle, ep):
         self.hmcount = hmcount
@@ -36,7 +43,7 @@ class BinaryBoardDriver(StreamDriver):
         if self.fmcount is not None:
             self.fmcount.value = board.fullmove_clock
         self.wtp.value = board.turn == chess.WHITE
-        self.castle.value = 0 # TODO
+        self.castle.value = encode_casteling_bits(board)
         self.ep.value = 0 # TODO
         await super().send(binary_pieces, **kwargs)
         return board
