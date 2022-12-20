@@ -103,7 +103,7 @@ module psudolegal_board(
     begin: item
       movegen_piece_stack #(.POSITION(i)) movegen_piece_white (
         .clk(clk),
-        .clear(in_pos_valid & in_pos_sop),
+        .clear(in_pos_valid & in_pos_sop & (i > 0 || !in_pos_white)),
         .in_data(stack_interconnect_white[i*10 +: 10]),
         .out_data(stack_interconnect_white[(i+1)*10 +: 10]),
         .load(in_pos_white & stack_interconnect_white[i*10+9])
@@ -111,7 +111,7 @@ module psudolegal_board(
 
       movegen_piece_stack #(.POSITION(i)) movegen_piece_black (
         .clk(clk),
-        .clear(in_pos_valid & in_pos_sop),
+        .clear(in_pos_valid & in_pos_sop && (i > 0 || !in_pos_black)),
         .in_data(stack_interconnect_black[i*10 +: 10]),
         .out_data(stack_interconnect_black[(i+1)*10 +: 10]),
         .load(in_pos_black & stack_interconnect_black[i*10+9])

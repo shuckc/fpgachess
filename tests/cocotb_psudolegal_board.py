@@ -232,7 +232,9 @@ async def test_kiwipete_moves(dut):
     await test_fen_moves(start_strobe, fd, rcv, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
     await test_fen_moves(start_strobe, fd, rcv, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1")
 
-    # ep test
-    # c4d3 is ep capture
+    # tests from https://gist.github.com/peterellisjones/8c46c28141c162d1d8a0f0badbc9cff9
+
+    await test_fen_moves(start_strobe, fd, rcv, "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b KQ - 3 2")
+    # ep test - c4d3 is ep capture
     await test_fen_moves(start_strobe, fd, rcv, "8/8/8/2k5/2pP4/8/B7/4K3 b - d3 0 3")
 

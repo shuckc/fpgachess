@@ -12,9 +12,9 @@ module movegen_piece_stack #(
   );
 
   always @(posedge clk) begin
-    if (clear && !load) begin
+    if (clear) begin
       out_data <= 0;
-    end if (load) begin
+    end else if (load) begin
       out_data <= in_data;
     end
   end
