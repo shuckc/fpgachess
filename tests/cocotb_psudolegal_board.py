@@ -237,4 +237,7 @@ async def test_kiwipete_moves(dut):
     await test_fen_moves(start_strobe, fd, rcv, "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b KQ - 3 2")
     # ep test - c4d3 is ep capture
     await test_fen_moves(start_strobe, fd, rcv, "8/8/8/2k5/2pP4/8/B7/4K3 b - d3 0 3")
+    await test_fen_moves(start_strobe, fd, rcv, "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2")
+    # cannot castle when in check
+    await test_fen_moves(start_strobe, fd, rcv, "r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b KQkq - 3 2")
 

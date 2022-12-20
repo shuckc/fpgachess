@@ -89,16 +89,27 @@ module movegen_square #(
   // control signals
   input logic   emit_move,
   output        target_square,
+  input logic   load_attackers,
 
   input logic   wtp
   );
 
   // serial data clock through
   reg [3:0] pos = 0;
+  reg       is_attacked = 0;
+
   always @(posedge clk) begin
     if (in_pos_valid) begin
       pos <= in_pos_data;
     end
+
+    if (load_attackers) begin
+      is_attacked <=  i_pne | i_pse | i_psw | i_pnw |
+                      i_kn | i_kne | i_ke | i_kse | i_ks | i_ksw | i_kw | i_knw |
+                      i_ss | i_sn | i_sw | i_se | i_ssw | i_snw | i_sne | i_sse |
+                      i_nsse | i_nssw | i_nnne | i_nnnw | i_neen | i_nees | i_nwwn | i_nwws;
+    end
+
   end
   assign out_pos_data = pos;
 
@@ -119,16 +130,22 @@ module movegen_square #(
   assign p_bishop = piece == 3'h4;
   assign p_knight = piece == 3'h5;
 
+  wire p_white_pawn = pos == 4'hE;
+  wire p_black_pawn = pos == 4'h6;
+
+  wire emit_attack = sq_oppos & load_attackers;
+
   // pawn moves out (direction depends on colour!)
-  wire pn = (emit_move & pos == 4'hE);
-  assign o_pn  = pn || (RANK == 3 & i_ps & sq_empty); // double-move
-  assign o_pne_nw = pn;
-  wire ps = (emit_move & pos == 4'h6);
-  assign o_ps  = ps || (RANK == 6 & i_pn & sq_empty); // double-move
-  assign o_pse_sw = ps;
+  wire pn = (emit_move & p_white_pawn);
+  assign o_pn  = pn || (RANK == 3 & i_ps & sq_empty);   // pn | double-move
+  assign o_pne_nw = pn || (emit_attack & p_white_pawn); // pn | attackers
+
+  wire ps = (emit_move & p_black_pawn);
+  assign o_ps  = ps || (RANK == 6 & i_pn & sq_empty);   // ps | double-move
+  assign o_pse_sw = ps || (emit_attack & p_black_pawn); // ps | attackers
 
   // king moves out
-  wire k = emit_move & p_king;
+  wire k = (emit_move || emit_attack) & p_king;
   assign o_kn  = k;
   assign o_kne = k;
   assign o_ke  = k;
@@ -139,8 +156,8 @@ module movegen_square #(
   assign o_knw = k;
 
   // sliders out, with combinatorial pass thru if empty
-  wire slide_hver = emit_move & (p_queen | p_rook);
-  wire slide_diag = emit_move & (p_queen | p_bishop);
+  wire slide_hver = (emit_move || emit_attack) & (p_queen | p_rook);
+  wire slide_diag = (emit_move || emit_attack) & (p_queen | p_bishop);
   assign o_sn  = slide_hver | (sq_empty & i_ss);
   assign o_ss  = slide_hver | (sq_empty & i_sn);
   assign o_se  = slide_hver | (sq_empty & i_sw);
@@ -151,7 +168,7 @@ module movegen_square #(
   assign o_snw = slide_diag | (sq_empty & i_sse);
 
   // knight out
-  wire n = emit_move & p_knight;
+  wire n = (emit_move || emit_attack) & p_knight;
   assign o_nnne = n;
   assign o_nnnw = n;
   assign o_nssw = n;
@@ -167,13 +184,13 @@ module movegen_square #(
   wire castle_move;
   generate
     if (RANK == 1 && FILE == 5) begin // e1_king square
-      assign o_castle_w = i_castle_rights[2] & emit_move; // white queenside
-      assign o_castle_e = i_castle_rights[3] & emit_move; // white kingside
+      assign o_castle_w = i_castle_rights[2] & emit_move & !is_attacked; // white queenside
+      assign o_castle_e = i_castle_rights[3] & emit_move & !is_attacked; // white kingside
       assign castle_move = 0;
     end
     else if (RANK == 8 && FILE == 5) begin // e8 king square
-      assign o_castle_w = i_castle_rights[0] & emit_move; // black queenside
-      assign o_castle_e = i_castle_rights[1] & emit_move; // black kingside
+      assign o_castle_w = i_castle_rights[0] & emit_move & !is_attacked; // black queenside
+      assign o_castle_e = i_castle_rights[1] & emit_move & !is_attacked; // black kingside
       assign castle_move = 0;
     end
     else if (RANK == 1) begin // 1_rank

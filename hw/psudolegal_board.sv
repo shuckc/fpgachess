@@ -96,7 +96,18 @@ module psudolegal_board(
   assign stack_interconnect_white[9:0] = { 1'b1, in_pos_data[2:0], in_pos_rf};
   assign stack_interconnect_to_play = load_pieces ? (in_wtp ? stack_interconnect_white[10 +: 16*10] : stack_interconnect_black[10 +: 16*10]) : {10'b0, stack_interconnect_to_play_o[10 +: 15*10]};
 
-  assign load_pieces = start;
+  // small shift register to run through some setup before
+  // we can generate moves - latching which squares are under attack
+  reg load_attackers = 0;
+  reg load_checkers = 0;
+  reg start_moves = 0;
+  always @(posedge clk) begin
+    load_attackers <= start;
+    load_checkers <= load_attackers;
+    start_moves <= load_checkers;
+  end
+
+  assign load_pieces = start_moves;
   genvar i;
   generate
     for (i=0; i<16; i=i+1)
@@ -208,9 +219,9 @@ module psudolegal_board(
 
           // trigger for this square to emit, and signalling
           // a valid destination
-          .emit_move( square_from[r*8+f] ),
+          .emit_move( !load_attackers & square_from[r*8+f] ),
           .target_square( square_to[r*8+f]),
-
+          .load_attackers( load_attackers ),
           // interconnect signals between squares
 
           // pawn moves signals are not shared with king because of
@@ -399,7 +410,7 @@ module psudolegal_board(
     .grant({{square_done, square_to_arb}})
   );
   always @(posedge clk) begin
-    if (start || square_done) begin
+    if (start_moves || square_done) begin
       square_base <= 1;
     end else begin
       square_base <= square_to_arb << 1;
