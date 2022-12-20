@@ -9,6 +9,7 @@ module movegen_square #(
   input logic [3:0]  in_pos_data = 0,
   output wire  [3:0] out_pos_data,
 
+  input logic        i_ep_file,
   input logic [3:0]  i_castle_rights,
 
   // pawn moves
@@ -195,9 +196,15 @@ module movegen_square #(
   // pieces moving here
   assign pawn_move = (i_pn | i_ps) & sq_empty;
   assign pawn_take = (i_pne | i_pse | i_psw | i_pnw) & sq_oppos;
+  // if  wtp, ep indicates a black move, RANK == 6 is the ep capture square
+  // if !wtp, ep indicates a white move, RANK == 3 is the ep capture square
+  assign pawn_ep   = (((i_pne | i_pnw) && sq_empty && RANK == 3) |
+                      ((i_pse | i_psw) && sq_empty && RANK == 6))
+                    && i_ep_file;
+
   assign king_move = (i_kn | i_kne | i_ke | i_kse | i_ks | i_ksw | i_kw | i_knw) & (sq_empty | sq_oppos);
   assign slide_move = (i_ss | i_sn | i_sw | i_se | i_ssw | i_snw | i_sne | i_sse) & (sq_empty | sq_oppos);
   assign knight_move = (i_nsse | i_nssw | i_nnne | i_nnnw | i_neen | i_nees | i_nwwn | i_nwws) & (sq_empty | sq_oppos);
-  assign target_square = pawn_move || pawn_take || knight_move || slide_move || king_move || castle_move;
+  assign target_square = pawn_move || pawn_take || pawn_ep || knight_move || slide_move || king_move || castle_move;
 
 endmodule

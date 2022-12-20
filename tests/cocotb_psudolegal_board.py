@@ -26,6 +26,11 @@ class BinaryBoardDriver(StreamDriver):
         self.ep = ep
         super().__init__(clock, valid, data, sop, eop)
 
+    def _encode_ep_bits(self, board):
+        if board.ep_square is None:
+            return 0
+        return 1 + chess.square_file(board.ep_square)
+
     """
     FEN strings need a length-aware transport as the final field
     is an ascii digit length field, which could have more digits.
@@ -44,7 +49,7 @@ class BinaryBoardDriver(StreamDriver):
             self.fmcount.value = board.fullmove_clock
         self.wtp.value = board.turn == chess.WHITE
         self.castle.value = encode_casteling_bits(board)
-        self.ep.value = 0 # TODO
+        self.ep.value = self._encode_ep_bits(board)
         await super().send(binary_pieces, **kwargs)
         return board
 
@@ -200,6 +205,13 @@ async def test_psudo_legal_moves(dut):
 
     assert_moves_equal(bs, board)
 
+async def test_fen_moves(start_strobe, fd, rcv, fenstr):
+    board = await fd.send(fenstr)
+    await start_strobe.strobe()
+    bs = await rcv.recv()
+    await Timer(5, units="ns")
+    assert_moves_equal(bs, board)
+
 
 @cocotb.test()
 async def test_kiwipete_moves(dut):
@@ -216,11 +228,11 @@ async def test_kiwipete_moves(dut):
     await Timer(5, units="ns")
     await RisingEdge(dut.clk)
 
-    board = await fd.send(
-        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
-    )
-    await start_strobe.strobe()
-    bs = await rcv.recv()
-    await Timer(5, units="ns")
+    # kiwipete
+    await test_fen_moves(start_strobe, fd, rcv, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+    await test_fen_moves(start_strobe, fd, rcv, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1")
 
-    assert_moves_equal(bs, board)
+    # ep test
+    # c4d3 is ep capture
+    await test_fen_moves(start_strobe, fd, rcv, "8/8/8/2k5/2pP4/8/B7/4K3 b - d3 0 3")
+

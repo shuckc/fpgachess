@@ -7,7 +7,8 @@ module psudolegal_board(
   input logic        in_pos_eop = 0,
   input logic        in_wtp = 0,
   input logic [3:0]  in_castle,
-  input logic [2:0]  in_ep,
+  // 9 values: 0, and files 1-8. Max value is 4'b1000
+  input logic [3:0]  in_ep,
 
   // moves ouput in 20-bit UCI format: {promote, piece, from_rf, takes, to_rf}
   //  uci_move_promote 00   {0: no promotion, or queen, 1: bishop, 2: rook, 3: night}
@@ -43,6 +44,14 @@ module psudolegal_board(
 //  .in_pos_data(in_pos_data),
     .out_rankfile(in_pos_rf)
   );
+
+  // expand en passant square. we will ignore the bottom output bit
+  wire [8:0] in_ep_onehot_z0;
+  onehot_from_bin #(.WIDTH(9)) onehot_from_bin_ep(
+    .in(in_ep),
+    .out(in_ep_onehot_z0)
+  );
+  wire [7:0] ep_file = in_ep_onehot_z0[8:1];
 
   // Instantiate the piece stack, of 2x16-items, and piece iterator 1x16 items.
   // Two stacks, one for white one for black, hold {full,piece,rank,file} in any order.
@@ -157,7 +166,7 @@ module psudolegal_board(
 
   // convert the current cell uci_move_from coordinates from piece_stack to a
   // one-hot signal routed to the board square
-  onehot_from_bin #(.WIDTH(64)) onehot_from_bin(
+  onehot_from_bin #(.WIDTH(64)) onehot_from_bin_square_from(
     .in({uci_move_from_r, uci_move_from_f}),
     .out(square_from)
   );
@@ -227,6 +236,7 @@ module psudolegal_board(
           .o_ps(     w_ps[    (r+1)*10 + f+1]),  .i_pn( w_ps[    (r+1+1)*10 + f+1+0]),
           .o_pse_sw( w_pse_sw[(r+1)*10 + f+1]),  .i_pnw(w_pse_sw[(r+1+1)*10 + f+1+1]),
                                                  .i_pne(w_pse_sw[(r+1+1)*10 + f+1-1]),
+          .i_ep_file(ep_file[f]),
 
           // slide out rays (used by queen, rook, bishop), clockwise from N
           .o_sn(  w_sn[ (r+1)*10 + f+1]),    .i_ss(  w_sn[ (r+1-1)*10 + f+1+0]),
