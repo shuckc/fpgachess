@@ -9,7 +9,6 @@ module psudolegal_board(
   input logic [3:0]  in_castle,
   input logic [2:0]  in_ep,
 
-
   // moves ouput in 20-bit UCI format: {promote, piece, from_rf, takes, to_rf}
   //  uci_move_promote 00   {0: no promotion, or queen, 1: bishop, 2: rook, 3: night}
   //  uci_move_piece   000  {none, king, queen, rook, bishop, knight, pawn}
@@ -34,45 +33,6 @@ module psudolegal_board(
   wire [2:0] uci_move_takes;
   wire [2:0] uci_move_to_r;
   wire [2:0] uci_move_to_f;
-  wire [19:0] o_uci_data_w;
-  assign o_uci_data_w = {uci_move_promote, uci_move_piece, uci_move_from_f, uci_move_from_r, uci_move_takes, uci_move_to_f, uci_move_to_r};
-  reg r_load_pieces_d = 0;
-
-  // the signal to know if this was the *last* valid move is very long
-  // piece stack -> square_from -> board -> square_to -> arbiter
-  // and it's impossible to know if the remaining pieces will generate
-  // and valid moves. So we emit the generated moves 'one behind', by
-  // buffering it until we know there is one more or we've reached the
-  // last piece's output moves, in which case we flush with EOP.
-  reg [19:0] o_uci_buffer_data = 0;
-  reg        o_uci_buffer_valid = 0;
-  reg        o_uci_buffer_sop = 0;
-  reg done_sop = 0;
-
-  wire       o_uci_data_valid = stack_interconnect_to_play_o[9] & ~square_done;
-  wire last_piece_is_done = !stack_interconnect_to_play_o[10+9] & square_done;
-  always_ff @(posedge clk) begin
-
-    // clock generated data into buffer
-    if (o_uci_data_valid) begin
-      o_uci_buffer_data  <= o_uci_data_w;
-      o_uci_buffer_sop <= o_uci_data_valid & !done_sop;
-    end
-    if (o_uci_data_valid || last_piece_is_done) begin
-      o_uci_buffer_valid <= o_uci_data_valid;
-      done_sop <= (done_sop | o_uci_data_valid) & !last_piece_is_done;
-    end
-
-    // in the cycle after o_uci_data_valid, a square_done signal
-    // indicates the buffered move was the last for this piece, and if the
-    // piece stack was also the last item, buffered item is last move.
-    o_uci_data <= o_uci_buffer_data;
-    o_uci_sop <= o_uci_buffer_sop;
-    o_uci_valid <= o_uci_buffer_valid && (o_uci_data_valid || last_piece_is_done);
-    o_uci_eop <= last_piece_is_done;
-
-    r_load_pieces_d <= load_pieces;
-  end
 
   // track the current rank/file from incoming serial form
   wire [5:0] in_pos_rf;
@@ -454,5 +414,41 @@ module psudolegal_board(
     .lookup_rankfile({uci_move_to_r, uci_move_to_f}),
     .out_piece()
   );
+
+  // assemble the final combinatorial move data together
+  wire [19:0] o_uci_data_w = {uci_move_promote, uci_move_piece, uci_move_from_f, uci_move_from_r, uci_move_takes, uci_move_to_f, uci_move_to_r};
+  wire        o_uci_data_valid = stack_interconnect_to_play_o[9] & ~square_done;
+
+  // the signal to know if this was the *last* valid move is not yet available
+  // as it's impossible to know if the remaining pieces will generate any valid
+  // moves. So we emit the generated moves 'one behind', by buffering
+  // o_uci_data_w until we know there is one more or we've reached the last
+  // piece's last move, in which case we flush with EOP.
+  reg [19:0] o_uci_buffer_data = 0;
+  reg        o_uci_buffer_valid = 0;
+  reg        o_uci_buffer_sop = 0;
+  reg        done_sop = 0;
+
+  wire last_piece_is_done = !stack_interconnect_to_play_o[10+9] & square_done;
+  always_ff @(posedge clk) begin
+
+    // clock generated data into buffer
+    if (o_uci_data_valid) begin
+      o_uci_buffer_data  <= o_uci_data_w;
+      o_uci_buffer_sop <= o_uci_data_valid & !done_sop;
+    end
+    if (o_uci_data_valid || last_piece_is_done) begin
+      o_uci_buffer_valid <= o_uci_data_valid;
+      done_sop <= (done_sop | o_uci_data_valid) & !last_piece_is_done;
+    end
+
+    // in the cycle after o_uci_data_valid, a square_done signal
+    // indicates the buffered move was the last for this piece, and if the
+    // piece stack was also the last item, buffered item is last move.
+    o_uci_data <= o_uci_buffer_data;
+    o_uci_sop <= o_uci_buffer_sop;
+    o_uci_valid <= o_uci_buffer_valid && (o_uci_data_valid || last_piece_is_done);
+    o_uci_eop <= last_piece_is_done;
+  end
 
 endmodule
