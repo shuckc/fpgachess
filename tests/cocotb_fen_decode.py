@@ -30,6 +30,7 @@ def get_binary_board(board):
     #  K Q R B N P
     #  1 2 3 4 5 6   +0 black (lower case)
     #  9 A B C D E   +8 white (upper case)
+    print(board.fen())
     print(board)
     # {'K': 1, 'Q': 2, 'R': 3, 'B': 4, 'N': 5, 'P': 6, 'k': 9, 'q': 10, 'r': 11, 'b': 12, 'n': 13, 'p': 14}
     binary_board = bytearray(64)
