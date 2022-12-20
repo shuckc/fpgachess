@@ -10,8 +10,8 @@ module psudolegal_board(
   // 9 values: 0, and files 1-8. Max value is 4'b1000
   input logic [3:0]  in_ep,
 
-  // moves ouput in 20-bit UCI format: {promote, piece, from_rf, takes, to_rf}
-  //  uci_move_promote 00   {0: no promotion, or queen, 1: bishop, 2: rook, 3: night}
+  // moves ouput in 21-bit UCI format: {promote, piece, from_rf, takes, to_rf}
+  //  uci_move_promote 000  {0: no promotion, 4: queen, 5: bishop, 6: rook, 7: knight}
   //  uci_move_piece   000  {none, king, queen, rook, bishop, knight, pawn}
   //  uci_move_from_r  000  rank 0-7
   //  uci_move_from_f  000  file 0-7
@@ -20,14 +20,14 @@ module psudolegal_board(
   //  uci_move_to_f    000  file 0-7
   input logic       start,
   output reg        o_uci_valid = 0,
-  output reg [19:0] o_uci_data = 0,
+  output reg [20:0] o_uci_data = 0,
   output reg        o_uci_sop = 0,
   output reg        o_uci_eop = 0
   );
 
 
   // pack and register uci_move output
-  wire [1:0] uci_move_promote;
+  wire [2:0] uci_move_promote;
   wire [2:0] uci_move_piece;
   wire [2:0] uci_move_from_r;
   wire [2:0] uci_move_from_f;
@@ -404,6 +404,8 @@ module psudolegal_board(
   // to pop to the next piece stack.
   reg [64:0] square_base = 1;
   wire square_done;
+  wire promotion_move;
+  reg [1:0] uci_move_promote_r = 0;
   arbiter #(.WIDTH(65)) arbiter_target (
     .base(square_base),
     .req({{1'b1, square_to}}),
@@ -412,10 +414,16 @@ module psudolegal_board(
   always @(posedge clk) begin
     if (start_moves || square_done) begin
       square_base <= 1;
-    end else begin
+      uci_move_promote_r <= 0;
+    end else if (!promotion_move || uci_move_promote_r == 2'd3) begin
       square_base <= square_to_arb << 1;
+      uci_move_promote_r <= 0;
+    end else begin
+      uci_move_promote_r <= uci_move_promote_r + 1;
     end
   end
+
+  wire promotion_move_is_pawn = uci_move_piece == 3'h6;
 
   // convert one-hot square_to_arb to a 6-bit square rank/file
   wire [5:0] square_to_rf;
@@ -423,8 +431,10 @@ module psudolegal_board(
 
   assign uci_move_to_r = square_to_rf[3 +: 3];
   assign uci_move_to_f = square_to_rf[0 +: 3];
-  assign uci_move_promote = 0;
+  assign uci_move_promote = {promotion_move, uci_move_promote_r[1:0]};
   assign uci_move_takes = 0;
+
+  assign promotion_move = promotion_move_is_pawn && (uci_move_to_r == 3'd0 || uci_move_to_r == 3'd7);
 
   movegen_lookup_output movegen_lookup (
     .clk(clk),
@@ -437,7 +447,7 @@ module psudolegal_board(
   );
 
   // assemble the final combinatorial move data together
-  wire [19:0] o_uci_data_w = {uci_move_promote, uci_move_piece, uci_move_from_f, uci_move_from_r, uci_move_takes, uci_move_to_f, uci_move_to_r};
+  wire [20:0] o_uci_data_w = {uci_move_promote, uci_move_piece, uci_move_from_f, uci_move_from_r, uci_move_takes, uci_move_to_f, uci_move_to_r};
   wire        o_uci_data_valid = stack_interconnect_to_play_o[9] & ~square_done;
 
   // the signal to know if this was the *last* valid move is not yet available
@@ -445,7 +455,7 @@ module psudolegal_board(
   // moves. So we emit the generated moves 'one behind', by buffering
   // o_uci_data_w until we know there is one more or we've reached the last
   // piece's last move, in which case we flush with EOP.
-  reg [19:0] o_uci_buffer_data = 0;
+  reg [20:0] o_uci_buffer_data = 0;
   reg        o_uci_buffer_valid = 0;
   reg        o_uci_buffer_sop = 0;
   reg        done_sop = 0;

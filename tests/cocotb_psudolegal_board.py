@@ -101,6 +101,9 @@ def encode_binary_moves(binary_moves):
         uci = f"{files[m[14:12].integer]}{ranks[m[11:9].integer]}{files[m[5:3].integer]}{ranks[m[2:0].integer]}"
         if p != "p":
             uci = f"{p}{uci}"
+        if m[20]:
+            promoted_to = "qrnb"[m[19:18]]
+            uci = f"{uci}{promoted_to}"
         moves.add(uci)
     return moves
 
@@ -241,4 +244,5 @@ async def test_kiwipete_moves(dut):
     # cannot castle when in check
     await test_fen_moves(start_strobe, fd, rcv, "r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b KQkq - 3 2")
     await test_fen_moves(start_strobe, fd, rcv, "2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b KQ - 3 2")
+    # tests promotion
     await test_fen_moves(start_strobe, fd, rcv, "rnb2k1r/pp1Pbppp/2p5/q7/2B5/8/PPPQNnPP/RNB1K2R w KQ - 3 9")
