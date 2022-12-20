@@ -45,3 +45,18 @@ To run a particular target:
 
 
 
+Test suites
+
+---
+* movegen / perft
+  - https://www.chessprogramming.org/Perft_Results
+  - http://www.talkchess.com/forum3/viewtopic.php?f=7&t=42463&sid=017c7f0619b356d590c8aa991d4b98c7
+  - counts for a variety of positions https://www.stmintz.com/ccc/index.php?id=488817
+  - https://github.com/elcabesa/vajolet/blob/master/tests/perft.txt
+  - https://github.com/ChrisWhittington/Chess-EPDs
+
+  - https://gist.github.com/peterellisjones/8c46c28141c162d1d8a0f0badbc9cff9
+
+* scoring / best move
+  - Hossa engine tests. 10 EPD files - new line separated FEN strings annotated with 'bm' (best move) comprising nearly 1,400 test positions.  http://www.jakob.at/steffen/hossa/
+

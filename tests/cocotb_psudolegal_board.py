@@ -240,4 +240,5 @@ async def test_kiwipete_moves(dut):
     await test_fen_moves(start_strobe, fd, rcv, "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2")
     # cannot castle when in check
     await test_fen_moves(start_strobe, fd, rcv, "r3k2r/p1pp1pb1/bn2Qnp1/2qPN3/1p2P3/2N5/PPPBBPPP/R3K2R b KQkq - 3 2")
-
+    await test_fen_moves(start_strobe, fd, rcv, "2kr3r/p1ppqpb1/bn2Qnp1/3PN3/1p2P3/2N5/PPPBBPPP/R3K2R b KQ - 3 2")
+    await test_fen_moves(start_strobe, fd, rcv, "rnb2k1r/pp1Pbppp/2p5/q7/2B5/8/PPPQNnPP/RNB1K2R w KQ - 3 9")

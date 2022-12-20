@@ -196,12 +196,12 @@ module movegen_square #(
     else if (RANK == 1) begin // 1_rank
       assign o_castle_w = sq_empty && i_castle_e;
       assign o_castle_e = sq_empty && i_castle_w;
-      assign castle_move = (FILE == 7 && i_castle_w) | (FILE == 3 && i_castle_e);
+      assign castle_move = (FILE == 7 && sq_empty && i_castle_w) | (FILE == 3 && sq_empty && i_castle_e);
     end
     else if (RANK == 8) begin // 8_rank
       assign o_castle_w = sq_empty && i_castle_e;
       assign o_castle_e = sq_empty && i_castle_w;
-      assign castle_move = (FILE == 7 && i_castle_w) | (FILE == 3 && i_castle_e);
+      assign castle_move = (FILE == 7 && sq_empty && i_castle_w) | (FILE == 3 && sq_empty && i_castle_e);
     end
     else begin : not_king_row
       assign o_castle_e = 0;
