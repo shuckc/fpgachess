@@ -2,10 +2,10 @@
 module psudolegal_board(
   input logic clk,
 
-  input logic        in_pos_valid = 0,
-  input logic [3:0]  in_pos_data = 0,
-  input logic        in_pos_eop = 0,
-  input logic        in_wtp = 0,
+  input logic        in_pos_valid,
+  input logic [3:0]  in_pos_data,
+  input logic        in_pos_eop,
+  input logic        in_wtp,
   input logic [3:0]  in_castle,
   // 9 values: 0, and files 1-8. Max value is 4'b1000
   input logic [3:0]  in_ep,

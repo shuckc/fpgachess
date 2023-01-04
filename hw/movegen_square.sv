@@ -5,8 +5,8 @@ module movegen_square #(
   ) (
   input logic clk,
 
-  input logic        in_pos_valid = 0,
-  input logic [3:0]  in_pos_data = 0,
+  input logic        in_pos_valid,
+  input logic [3:0]  in_pos_data,
   output wire  [3:0] out_pos_data,
 
   input logic        i_ep_file,

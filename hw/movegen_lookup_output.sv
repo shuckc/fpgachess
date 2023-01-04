@@ -2,9 +2,9 @@
 module movegen_lookup_output(
   input logic clk,
 
-  input logic        in_pos_valid = 0,
-  input logic [3:0]  in_pos_data = 0,
-  input logic        in_pos_sop = 0,
+  input logic        in_pos_valid,
+  input logic [3:0]  in_pos_data,
+  input logic        in_pos_sop,
 
   input logic [5:0]  lookup_rankfile,
   output [3:0]       out_piece
