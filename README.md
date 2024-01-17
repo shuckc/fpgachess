@@ -7,6 +7,15 @@ Aim is to speak UCI over a UART, or some simpler protocol, then to generate scor
 
 * [efabless Project link](https://platform.efabless.com/projects/1454)
 
+Milestones
+---
+- [x] Parse FEN string
+- [x] CI build with Cocotb
+- [ ] Generate psudolegal moves from position, passing edge cases from https://gist.github.com/peterellisjones/8c46c28141c162d1d8a0f0badbc9cff9 (ie. perft with depth=0)
+- [ ] move stack / generate next board from position + move
+- [ ] UCI-2-UART wrapper for perft over USB serial in hardwrae 
+- [ ] eval?
+
 Tests
 ---
 Test bench implemented with `cocotb` and `cocotb-test`:
