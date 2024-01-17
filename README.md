@@ -11,9 +11,11 @@ Milestones
 ---
 - [x] Parse FEN string
 - [x] CI build with Cocotb
-- [ ] Generate psudolegal moves from position, passing edge cases from https://gist.github.com/peterellisjones/8c46c28141c162d1d8a0f0badbc9cff9 (ie. perft with depth=0)
-- [ ] move stack / generate next board from position + move
-- [ ] UCI-2-UART wrapper for perft over USB serial in hardwrae 
+- [x] Generate psudolegal moves from position, passing edge cases from https://gist.github.com/peterellisjones/8c46c28141c162d1d8a0f0badbc9cff9 and others
+- [x] Validates moves from generator match pychess
+- [ ] UCI wrapper to allow expose move generator result as `perft` fixed for depth=0
+- [ ] UART-2-UCI layer for perft over USB serial in hardware 
+- [ ] move stack / generate next board from position + move / `perft` variable depth
 - [ ] eval?
 
 Tests
